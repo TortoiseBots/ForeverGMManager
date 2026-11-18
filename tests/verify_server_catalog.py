@@ -18,6 +18,7 @@ DEFAULT_SERVER_SRC = pathlib.Path(__file__).resolve().parents[2] / "forever-loca
 SERVER_SRC = pathlib.Path(os.environ.get("FOREVER_SERVER_SRC", str(DEFAULT_SERVER_SRC)))
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH = REPO_ROOT / "Data.lua"
+TELEPORTS_PATH = REPO_ROOT / "Teleports.lua"
 COMMANDS_MD_PATH = REPO_ROOT / "COMMANDS.md"
 
 sys.path.insert(0, str(REPO_ROOT / "tools"))
@@ -250,6 +251,26 @@ def extract_presets(data: str) -> list[tuple[int, str, str, str, list[str]]]:
     return presets
 
 
+def extract_teleport_presets(teleports: str) -> list[tuple[int, str, str, str]]:
+    access_match = re.search(r'TELEPORT_ACCESS\s*=\s*"([^"]+)"', teleports)
+    access = access_match.group(1) if access_match else "Moderator"
+    entries: list[tuple[int, str, str, str]] = []
+    for line_number, line in enumerate(teleports.splitlines(), 1):
+        pid = re.search(r'\bid\s*=\s*"([^"]+)"', line)
+        zone = re.search(r'\bzone\s*=\s*"([^"]+)"', line)
+        point = re.search(r'\bpoint\s*=\s*"([^"]+)"', line)
+        coords = re.search(
+            r"\bx\s*=\s*([-0-9.]+),\s*y\s*=\s*([-0-9.]+),\s*z\s*=\s*([-0-9.]+),\s*map\s*=\s*(\d+)"
+            r"(?:,\s*o\s*=\s*([-0-9.]+))?",
+            line,
+        )
+        if pid and zone and point and coords:
+            x, y, z, map_id, orientation = coords.groups()
+            cmd = f".go xyz {x} {y} {z} {map_id}" + (f" {orientation}" if orientation else "")
+            entries.append((line_number, pid.group(1), f"{zone.group(1)}: {point.group(1)}", cmd, access))
+    return entries
+
+
 def extract_lookup_commands(data: str) -> list[tuple[int, str]]:
     results: list[tuple[int, str]] = []
     for line_number, line in enumerate(data.splitlines(), 1):
@@ -309,6 +330,26 @@ def main() -> int:
                 f"server {expected_access!r} via {route[0]}"
             )
 
+    teleport_presets = []
+    if TELEPORTS_PATH.exists():
+        teleport_presets = extract_teleport_presets(TELEPORTS_PATH.read_text(encoding="utf-8"))
+        for line_number, pid, label, command, access in teleport_presets:
+            if pid in ids:
+                failures.append(f"Teleports.lua:{line_number}: duplicate stable id {pid!r}")
+            else:
+                ids.add(pid)
+            route = longest_route(command, routes)
+            if not route:
+                failures.append(
+                    f"Teleports.lua:{line_number}: {label}: {command} has no route in server registry"
+                )
+                continue
+            if access != route[1]:
+                failures.append(
+                    f"Teleports.lua:{line_number}: {label}: access {access!r} != "
+                    f"server {route[1]!r} via {route[0]}"
+                )
+
     lookup_commands = extract_lookup_commands(data)
     for line_number, command in lookup_commands:
         if not longest_route(command, routes):
@@ -331,6 +372,7 @@ def main() -> int:
     print(
         "PASS: server catalogue contract "
         f"({len(presets)} presets, "
+        f"{len(teleport_presets)} teleports, "
         f"{len(lookup_commands)} FIND mappings, "
         f"{len(routes)} server routes)"
     )
