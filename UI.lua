@@ -1008,13 +1008,10 @@ local minimapButton = CreateFrame("Button", "TortoiseGMManagerMinimapButton", Mi
 minimapButton:SetWidth(31); minimapButton:SetHeight(31); minimapButton:SetFrameStrata("MEDIUM")
 minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
+-- The logo carries its own gold ring, so it fills the button without the stock tracking border.
 local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
--- Offset matches the hole in MiniMap-TrackingBorder, which is not centred in its texture.
-minimapIcon:SetWidth(20); minimapIcon:SetHeight(20); minimapIcon:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", 7, -5)
+minimapIcon:SetAllPoints(minimapButton)
 minimapIcon:SetTexture(BRAND_ICON)
-local minimapBorder = minimapButton:CreateTexture(nil, "OVERLAY")
-minimapBorder:SetWidth(53); minimapBorder:SetHeight(53); minimapBorder:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", 0, 0)
-minimapBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 TortoiseGMManager.minimapButton = minimapButton
 
