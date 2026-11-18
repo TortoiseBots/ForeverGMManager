@@ -66,7 +66,7 @@ expectFalse(TortoiseGM.IsDangerous(".kickstarter"), "unrelated command sharing .
 expectTrue(TortoiseGM.IsDangerous(".kick PlayerName"), "kick command is dangerous")
 expectTrue(TortoiseGM.IsDangerous(".tele add MySpot"), "persistent teleport creation is dangerous")
 expectTrue(TortoiseGM.IsDangerous(".gobject delete 123"), "gameobject deletion is dangerous")
-expectTrue(TortoiseGM.IsDangerous(".learn all_items"), "bulk learn command is dangerous")
+expectTrue(TortoiseGM.IsDangerous(".learn all recipes"), "bulk learn command is dangerous")
 expectFalse(TortoiseGM.IsDangerous(".tele name Player Stormwind"), "player teleport is not treated as persistent tele edit")
 
 -- Every catalogue entry explicitly marked danger must participate in the core confirmation guard.
@@ -131,18 +131,17 @@ expectFalse(TortoiseGM.IsFavourite(favouriteEntry.command), "removed command is 
 local scaleEntry = TortoiseGM.FindEntry("modify-scale")
 local scaleValues = TortoiseGM.InitializeValues(scaleEntry)
 expectEqual(scaleValues.scale, 1, "scale default")
-expectEqual(scaleValues.persist, "off", "scale persistence default")
-expectEqual(TortoiseGM.ComposeValues(scaleEntry, scaleValues), ".modify scale 1 off", "structured scale composition")
+expectEqual(TortoiseGM.ComposeValues(scaleEntry, scaleValues), ".modify scale 1", "structured scale composition")
 expectEqual(TortoiseGM.AdjustNumber(scaleEntry.arguments[1], 9.95, 1), 10, "numeric increment clamps maximum")
 expectEqual(TortoiseGM.AdjustNumber(scaleEntry.arguments[1], 0.1, -1), 0.1, "numeric decrement clamps minimum")
 
-local hoverEntry = TortoiseGM.FindEntry("hover")
-local hoverValues = TortoiseGM.InitializeValues(hoverEntry)
-expectEqual(TortoiseGM.ComposeValues(hoverEntry, hoverValues), ".hover 1", "hover preserves numeric on token")
-hoverValues.state = TortoiseGM.CycleToggle(hoverEntry.arguments[1], hoverValues.state, 1)
-expectEqual(hoverValues.state, "0", "toggle cycles to exact off token")
-expectEqual(TortoiseGM.GetOptionLabel(hoverEntry.arguments[1], hoverValues.state), "OFF", "toggle display label")
-expectEqual(TortoiseGM.ComposeValues(hoverEntry, hoverValues), ".hover 0", "toggle off composition")
+local flyEntry = TortoiseGM.FindEntry("gm-fly")
+local flyValues = TortoiseGM.InitializeValues(flyEntry)
+expectEqual(TortoiseGM.ComposeValues(flyEntry, flyValues), ".gm fly on", "gm-fly defaults to on token")
+flyValues.state = TortoiseGM.CycleToggle(flyEntry.arguments[1], flyValues.state, 1)
+expectEqual(flyValues.state, "off", "toggle cycles to exact off token")
+expectEqual(TortoiseGM.GetOptionLabel(flyEntry.arguments[1], flyValues.state), "OFF", "toggle display label")
+expectEqual(TortoiseGM.ComposeValues(flyEntry, flyValues), ".gm fly off", "toggle off composition")
 
 local addItem = TortoiseGM.FindEntry("additem")
 local valid, validationMessage = TortoiseGM.ValidateValues(addItem, TortoiseGM.InitializeValues(addItem))
@@ -150,7 +149,7 @@ expectFalse(valid, "required lookup ID validation")
 expectEqual(validationMessage, "Item ID is required.", "required validation identifies field")
 expectEqual(TortoiseGM.GetInteraction(TortoiseGM.FindEntry("gps")), "execute", "safe argument-free interaction")
 expectEqual(TortoiseGM.GetInteraction(addItem), "configure", "structured interaction")
-expectEqual(TortoiseGM.GetInteraction(TortoiseGM.FindEntry("deleteitem")), "review", "dangerous interaction")
+expectEqual(TortoiseGM.GetInteraction(TortoiseGM.FindEntry("npc-add")), "review", "dangerous interaction")
 expectEqual(TortoiseGM.GetInteraction(nil), "load", "manual interaction")
 
 local itemValues = TortoiseGM.InitializeValues(addItem)
@@ -177,16 +176,23 @@ itemValues.count = "1.5"
 valid, validationMessage = TortoiseGM.ValidateValues(addItem, itemValues)
 expectFalse(valid, "fractional count is rejected")
 expectEqual(validationMessage, "Count must be an integer.", "integer validation is precise")
-local deleteItem = TortoiseGM.FindEntry("deleteitem")
-local deleteValues = TortoiseGM.InitializeValues(deleteItem)
-deleteValues.itemId = "19019"; deleteValues.count = "20"; deleteValues.player = ""
-expectTrue(TortoiseGM.ValidateValues(deleteItem, deleteValues), "optional blank modifier is valid")
+local optionalPlayerEntry = {
+    command = ".additem",
+    arguments = {
+        { key = "itemId", label = "Item ID", type = "lookup-id", required = true },
+        { key = "count", label = "Count", type = "number", required = true, default = 1, min = 1, max = 1000, integer = true },
+        { key = "player", label = "Player", type = "text", optional = true },
+    },
+}
+local optionalValues = TortoiseGM.InitializeValues(optionalPlayerEntry)
+optionalValues.itemId = "19019"; optionalValues.count = "20"; optionalValues.player = ""
+expectTrue(TortoiseGM.ValidateValues(optionalPlayerEntry, optionalValues), "optional blank modifier is valid")
 
 -- Legacy command favourites migrate once to stable IDs, including merged aliases.
 TortoiseGMManagerDB.favourites = { ".gm on", ".hover 0", ".not-a-command" }
 TortoiseGM.MigrateFavourites()
 expectEqual(TortoiseGMManagerDB.favourites[1], "gm-mode", "legacy GM favourite migrates")
-expectEqual(TortoiseGMManagerDB.favourites[2], "hover", "merged alias favourite migrates")
+expectEqual(TortoiseGMManagerDB.favourites[2], "gm-fly", "merged alias favourite migrates")
 expectEqual(table.getn(TortoiseGMManagerDB.favourites), 2, "unresolvable favourite is omitted")
 TortoiseGM.MigrateFavourites()
 expectEqual(table.getn(TortoiseGMManagerDB.favourites), 2, "favourite migration is idempotent")
@@ -197,8 +203,8 @@ expectTrue(table.getn(TortoiseGM.GetFilteredCommands("all", "item id")) > 0, "se
 -- Every hinted command receives a helpful fallback input when no richer schema exists.
 local teleEntry = TortoiseGM.FindEntry("tele")
 local teleValues = TortoiseGM.InitializeValues(teleEntry)
-teleValues.location = "Thunder Bluff"
-expectEqual(TortoiseGM.ComposeValues(teleEntry, teleValues), ".tele Thunder Bluff", "tele location input composes exact command")
+teleValues.location = "ThunderBluff"
+expectEqual(TortoiseGM.ComposeValues(teleEntry, teleValues), ".tele ThunderBluff", "tele location input composes exact command")
 local summonEntry = TortoiseGM.FindEntry("summon")
 local summonArguments = TortoiseGM.GetEntryArguments(summonEntry)
 expectEqual(table.getn(summonArguments), 1, "hinted command receives one fallback input")
@@ -208,8 +214,8 @@ summonValues.arguments = "Testplayer"
 expectEqual(TortoiseGM.ComposeValues(summonEntry, summonValues), ".summon Testplayer", "fallback input updates command preview")
 local hpEntry = TortoiseGM.FindEntry("modify-hp")
 local hpValues = TortoiseGM.InitializeValues(hpEntry)
-hpValues.current = 5000; hpValues.maximum = 7500
-expectEqual(TortoiseGM.ComposeValues(hpEntry, hpValues), ".modify hp 5000 7500", "HP controls compose current and maximum")
+hpValues.current = 5000
+expectEqual(TortoiseGM.ComposeValues(hpEntry, hpValues), ".modify hp 5000", "HP control composes current HP")
 
 TortoiseGMDB.favourites = {}
 expectEqual(TortoiseGM.GetDefaultCategory(), "all", "All is default when no favourites exist")
