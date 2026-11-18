@@ -378,6 +378,107 @@ for matchIndex = 1, #pointMatches do
 end
 expectTrue(foundPoint, "catalogue search finds ported teleports by point name")
 
+-- Mail composer catalogue entry and core attachment/command logic.
+local mailEntry = TortoiseGM.FindEntry("mail-composer")
+expectTrue(mailEntry ~= nil, "mail-composer catalogue entry exists")
+expectEqual(mailEntry and mailEntry.category, "player", "mail-composer is in player category")
+expectEqual(TortoiseGM.GetInteraction(mailEntry), "open", "mail-composer interaction is open")
+
+TortoiseGM.ClearMailItems()
+local okAdd, errAdd = TortoiseGM.AddMailItem("abc", "Bad", 1)
+expectFalse(okAdd, "invalid item id rejected")
+expectTrue(errAdd ~= nil, "invalid item id returns error")
+
+local idx
+for idx = 1, 12 do
+    local added = TortoiseGM.AddMailItem(1000 + idx, "Item " .. idx, 1)
+    expectTrue(added, "can add attachment #" .. tostring(idx))
+end
+local overLimit, overErr = TortoiseGM.AddMailItem(9999, "Extra", 1)
+expectFalse(overLimit, "13th distinct attachment rejected")
+expectTrue(overErr ~= nil, "13th attachment returns error")
+
+-- Stacking an existing item id increases count instead of using a new slot.
+local stacked = TortoiseGM.AddMailItem(1001, "Item 1", 4)
+expectTrue(stacked, "stacking existing item id succeeds")
+expectEqual(TortoiseGM.mailItems[1].count, 5, "stacked item count updated")
+
+TortoiseGM.SetMailItemCount(1, 3)
+expectEqual(TortoiseGM.mailItems[1].count, 3, "SetMailItemCount updates count")
+TortoiseGM.RemoveMailItem(2)
+expectEqual(#TortoiseGM.mailItems, 11, "RemoveMailItem removes entry")
+
+TortoiseGM.ClearMailItems()
+expectEqual(#TortoiseGM.mailItems, 0, "ClearMailItems empties list")
+
+TortoiseGM.AddMailItem(6948, "Hearthstone", 1)
+TortoiseGM.AddMailItem(2901, "Mining Pick", 2)
+local itemsCmd, itemsValid, itemsErr = TortoiseGM.BuildMailCommand("items", {
+    recipient = "Thrall",
+    subject = 'Gift "Special"',
+    body = "Enjoy",
+})
+expectTrue(itemsValid, "valid .send items command builds")
+expectEqual(itemsErr, nil, "no error for valid .send items")
+expectEqual(itemsCmd, '.send items Thrall "Gift \'Special\'" "Enjoy" 6948:1 2901:2', "exact .send items command format")
+
+local _, noRecipValid = TortoiseGM.BuildMailCommand("items", { recipient = "", subject = "Hi", body = "" })
+expectFalse(noRecipValid, "empty recipient fails validation")
+local _, spaceRecipValid = TortoiseGM.BuildMailCommand("items", { recipient = "Bad Name", subject = "Hi", body = "" })
+expectFalse(spaceRecipValid, "recipient with space fails validation")
+local _, noSubjValid = TortoiseGM.BuildMailCommand("items", { recipient = "Thrall", subject = "", body = "" })
+expectFalse(noSubjValid, "empty subject fails validation")
+local _, longValid, longErr = TortoiseGM.BuildMailCommand("items", { recipient = "Thrall", subject = "Test", body = string.rep("x", 240) })
+expectFalse(longValid, ">255 byte mail command fails validation")
+expectTrue(longErr ~= nil and string.find(longErr, "255", 1, true) ~= nil, ">255 byte error mentions 255")
+
+expectEqual(TortoiseGM.ComputeMailCopper(2, 50, 75), 25075, "ComputeMailCopper computes total copper")
+local moneyCmd, moneyValid = TortoiseGM.BuildMailCommand("money", {
+    recipient = "Jaina",
+    subject = "Gold",
+    body = "",
+    gold = 1,
+    silver = 2,
+    copper = 3,
+})
+expectTrue(moneyValid, "valid .send money command builds")
+expectEqual(moneyCmd, '.send money Jaina "Gold" "" 10203', "exact .send money command format")
+local _, zeroMoneyValid = TortoiseGM.BuildMailCommand("money", { recipient = "Jaina", subject = "Gold", body = "", gold = 0, silver = 0, copper = 0 })
+expectFalse(zeroMoneyValid, "zero money fails validation")
+
+-- Shift+Click item link extraction and focus-guarded handling.
+local linkId, linkName = TortoiseGM.ExtractItemIdFromLink("|cff9d9d9d|Hitem:6948:0:0:0:0:0:0:0|h[Hearthstone]|h|r")
+expectEqual(linkId, 6948, "ExtractItemIdFromLink parses item id")
+expectEqual(linkName, "Hearthstone", "ExtractItemIdFromLink parses item name")
+local spellLinkId = TortoiseGM.ExtractItemIdFromLink("|cff71d5ff|Hspell:133|h[Fireball]|h|r")
+expectEqual(spellLinkId, nil, "ExtractItemIdFromLink ignores non-item links")
+
+local focusedText = nil
+local mockTarget = { SetText = function(_, v) focusedText = v end }
+TortoiseGM.GetFocusedItemLinkTarget = function() return nil end
+expectFalse(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "ignores item link when no addon field is focused")
+expectEqual(focusedText, nil, "unfocused target stays unchanged")
+
+TortoiseGM.GetFocusedItemLinkTarget = function() return mockTarget end
+now = 200
+expectTrue(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "fills focused item-ID field on item link")
+expectEqual(focusedText, "6948", "focused target receives numeric item ID")
+focusedText = nil
+expectFalse(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "deduplicates rapid duplicate hook call for same item")
+now = 201
+expectTrue(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "accepts item link again after cooldown")
+
+-- InstallLinkHooks is guarded and hooks Classic 1.15 link functions.
+local hookedNames = {}
+hooksecurefunc = function(name, fn) hookedNames[name] = fn end
+ChatEdit_InsertLink = function() end
+HandleModifiedItemClick = function() end
+TortoiseGM.linkHooksInstalled = false
+TortoiseGM.InstallLinkHooks()
+expectTrue(TortoiseGM.linkHooksInstalled, "InstallLinkHooks marks hooks installed")
+expectTrue(type(hookedNames["ChatEdit_InsertLink"]) == "function", "ChatEdit_InsertLink hooked")
+expectTrue(type(hookedNames["HandleModifiedItemClick"]) == "function", "HandleModifiedItemClick hooked")
+
 if failures > 0 then
     error(tostring(failures) .. " of " .. tostring(checks) .. " checks failed")
 end

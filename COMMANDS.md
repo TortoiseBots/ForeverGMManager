@@ -119,6 +119,7 @@
 | Learn crafts | `.learn all crafts` | Administrator | Teach all professions and secondary skills. | yes |
 | Learn default spells | `.learn all default` | Administrator | Teach all default race/class spells. | yes |
 | Learn all talents | `.learn all talents` | Administrator | Teach all talents for the selected player. | yes |
+| Mail composer | `.send items` | Moderator | Open the Mail Composer window to send items or money. |  |
 | Send items | `.send items` | Moderator | Mail item(s) to a player (can be offline). |  |
 | Send mail | `.send mail` | GM | Send an in-game mail to a player. |  |
 | Send money | `.send money` | GM | Mail copper to a player. |  |

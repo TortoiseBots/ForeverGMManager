@@ -178,6 +178,7 @@ end
 
 function TortoiseGMManager.GetInteraction(entry)
     if not entry then return "load" end
+    if entry.opens then return "open" end
     if entry.danger or TortoiseGMManager.IsDangerous(entry.command) then return "review" end
     if #TortoiseGMManager.GetEntryArguments(entry) > 0 then return "configure" end
     if entry.direct then return "execute" end
@@ -501,3 +502,151 @@ function TortoiseGMManager.ExecuteLookup(entry, query)
     sendSay(lookup); return true
 end
 function TortoiseGMManager.Compose(entry, args) return TortoiseGMManager.NormalizeCommand((entry and entry.command or "") .. (trim(args) ~= "" and " " .. trim(args) or "")) end
+
+TortoiseGMManager.MAX_MAIL_ITEMS = 12
+TortoiseGMManager.mailItems = TortoiseGMManager.mailItems or {}
+
+local function quoteMailArg(value)
+    value = trim(tostring(value or ""))
+    value = string.gsub(value, "[\r\n]+", " ")
+    value = string.gsub(value, '"', "'")
+    return '"' .. value .. '"'
+end
+
+function TortoiseGMManager.AddMailItem(itemId, itemName, count)
+    itemId = tonumber(itemId)
+    if not itemId or itemId <= 0 or itemId ~= math.floor(itemId) then
+        return false, "Enter a valid numeric item ID."
+    end
+    count = math.floor(tonumber(count) or 1)
+    if count < 1 then count = 1 end
+    local items = TortoiseGMManager.mailItems
+    local i
+    for i = 1, #items do
+        if items[i].id == itemId then
+            items[i].count = items[i].count + count
+            if itemName and itemName ~= "" then items[i].name = itemName end
+            return true, nil
+        end
+    end
+    if #items >= TortoiseGMManager.MAX_MAIL_ITEMS then
+        return false, "Mail can hold at most " .. tostring(TortoiseGMManager.MAX_MAIL_ITEMS) .. " attachments."
+    end
+    table.insert(items, {
+        id = itemId,
+        name = (itemName and itemName ~= "") and itemName or ("Item " .. tostring(itemId)),
+        count = count,
+    })
+    return true, nil
+end
+
+function TortoiseGMManager.SetMailItemCount(index, count)
+    local item = TortoiseGMManager.mailItems[index]
+    if not item then return false end
+    count = math.floor(tonumber(count) or 1)
+    if count < 1 then count = 1 end
+    item.count = count
+    return true
+end
+
+function TortoiseGMManager.RemoveMailItem(index)
+    if not TortoiseGMManager.mailItems[index] then return false end
+    table.remove(TortoiseGMManager.mailItems, index)
+    return true
+end
+
+function TortoiseGMManager.ClearMailItems()
+    local items = TortoiseGMManager.mailItems
+    local i
+    for i = #items, 1, -1 do items[i] = nil end
+end
+
+function TortoiseGMManager.ComputeMailCopper(gold, silver, copper)
+    local g = math.max(0, math.floor(tonumber(gold) or 0))
+    local s = math.max(0, math.floor(tonumber(silver) or 0))
+    local c = math.max(0, math.floor(tonumber(copper) or 0))
+    return (g * 10000) + (s * 100) + c
+end
+
+function TortoiseGMManager.BuildMailCommand(mode, fields, items)
+    fields = fields or {}
+    items = items or TortoiseGMManager.mailItems
+    local recipient = trim(fields.recipient)
+    local subject = trim(fields.subject)
+    local body = fields.body or ""
+    local command
+    if mode == "money" then
+        local copper = TortoiseGMManager.ComputeMailCopper(fields.gold, fields.silver, fields.copper)
+        command = ".send money " .. (recipient ~= "" and recipient or "<player>") .. " " .. quoteMailArg(subject) .. " " .. quoteMailArg(body) .. " " .. tostring(copper)
+        if recipient == "" then return command, false, "Recipient player name is required." end
+        if string.find(recipient, "%s") then return command, false, "Recipient name cannot contain spaces." end
+        if subject == "" then return command, false, "Mail subject is required." end
+        if copper <= 0 then return command, false, "Enter a money amount greater than zero." end
+    else
+        local parts, i = {}, nil
+        for i = 1, #items do
+            local count = math.max(1, math.floor(tonumber(items[i].count) or 1))
+            table.insert(parts, tostring(items[i].id) .. ":" .. tostring(count))
+        end
+        local itemTail = #parts > 0 and (" " .. table.concat(parts, " ")) or ""
+        command = ".send items " .. (recipient ~= "" and recipient or "<player>") .. " " .. quoteMailArg(subject) .. " " .. quoteMailArg(body) .. itemTail
+        if recipient == "" then return command, false, "Recipient player name is required." end
+        if string.find(recipient, "%s") then return command, false, "Recipient name cannot contain spaces." end
+        if subject == "" then return command, false, "Mail subject is required." end
+        if #items == 0 then return command, false, "Add at least one item attachment." end
+        if #items > TortoiseGMManager.MAX_MAIL_ITEMS then
+            return command, false, "Mail can hold at most " .. tostring(TortoiseGMManager.MAX_MAIL_ITEMS) .. " attachments."
+        end
+    end
+    if string.len(command) > 255 then
+        return command, false, "Command exceeds the 255-byte chat limit (" .. tostring(string.len(command)) .. "/255)."
+    end
+    return command, true, nil
+end
+
+function TortoiseGMManager.ExtractItemIdFromLink(link)
+    if type(link) ~= "string" or link == "" then return nil, nil end
+    local id = string.match(link, "item:(%d+)")
+    if not id then return nil, nil end
+    local name = string.match(link, "%[([^%]]+)%]")
+    return tonumber(id), name
+end
+
+local lastLinkHandled, lastLinkTime = nil, 0
+
+function TortoiseGMManager.HandleItemLinkClick(link)
+    local itemId, itemName = TortoiseGMManager.ExtractItemIdFromLink(link)
+    if not itemId then return false end
+    local target = TortoiseGMManager.GetFocusedItemLinkTarget and TortoiseGMManager.GetFocusedItemLinkTarget() or nil
+    if not target then return false end
+    local now = GetTime and GetTime() or 0
+    if lastLinkHandled == itemId and (now - lastLinkTime) < 0.05 then return false end
+    lastLinkHandled, lastLinkTime = itemId, now
+    if type(target) == "function" then
+        target(itemId, itemName)
+        return true
+    elseif type(target) == "table" and target.SetText then
+        target:SetText(tostring(itemId))
+        return true
+    end
+    return false
+end
+
+function TortoiseGMManager.InstallLinkHooks()
+    if TortoiseGMManager.linkHooksInstalled or type(hooksecurefunc) ~= "function" then return end
+    local installed = false
+    if type(ChatEdit_InsertLink) == "function" then
+        local ok = pcall(hooksecurefunc, "ChatEdit_InsertLink", function(text)
+            TortoiseGMManager.HandleItemLinkClick(text)
+        end)
+        if ok then installed = true end
+    end
+    if type(HandleModifiedItemClick) == "function" then
+        local ok = pcall(hooksecurefunc, "HandleModifiedItemClick", function(link)
+            if IsShiftKeyDown and not IsShiftKeyDown() then return end
+            TortoiseGMManager.HandleItemLinkClick(link)
+        end)
+        if ok then installed = true end
+    end
+    TortoiseGMManager.linkHooksInstalled = installed
+end

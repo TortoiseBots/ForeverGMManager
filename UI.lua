@@ -389,6 +389,8 @@ for rowIndex = 1, ROWS_PER_PAGE do
         local interaction = TortoiseGMManager.GetInteraction(entry)
         if getSingleToggle(entry) then
             executeToggle(entry, 1)
+        elseif interaction == "open" then
+            if entry.opens == "mail" and TortoiseGMManager.ShowMailComposer then TortoiseGMManager.ShowMailComposer() end
         elseif interaction == "execute" then
             TortoiseGMManager.Execute(entry.command)
         else
@@ -401,6 +403,7 @@ for rowIndex = 1, ROWS_PER_PAGE do
         if self.entry then
             local title
             if TortoiseGMManager.IsDangerous(self.entry.command) then title = "Review dangerous command"
+            elseif self.entry.opens then title = "Open window"
             elseif self.entry.direct then title = "Run now" else title = "Load into command bar" end
             showTooltip(self, "ANCHOR_RIGHT", title, {
                 { self.entry.detail or "", 1, 1, 1 },
@@ -963,6 +966,7 @@ function TortoiseGMManager.RefreshList()
                 row.toggleOffButton:Hide()
                 row.useButton:SetLabelColor(nil)
                 if interaction == "review" then row.useButton:SetText("REVIEW"); row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.red)
+                elseif interaction == "open" then row.useButton:SetText("OPEN"); row.useButton:SetVariant("primary")
                 elseif interaction == "execute" then row.useButton:SetText("RUN NOW"); row.useButton:SetVariant("primary")
                 else row.useButton:SetText("CONFIGURE"); row.useButton:SetVariant("secondary") end
             end
@@ -1104,6 +1108,25 @@ SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
     end
 end
 
+function TortoiseGMManager.GetFocusedItemLinkTarget()
+    if ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow() then return nil end
+    local i
+    for i = 1, #(TortoiseGMManager.argumentControls or {}) do
+        local control = TortoiseGMManager.argumentControls[i]
+        local arg = control.argument
+        if control.edit and control.edit:IsVisible() and control.edit:HasFocus() and arg and (arg.key == "itemId" or (arg.type == "lookup-id" and TortoiseGMManager.selectedEntry and TortoiseGMManager.selectedEntry.lookupCommand == ".lookup item")) then
+            return control.edit
+        end
+    end
+    if lookupBox and lookupBox:IsVisible() and lookupBox:HasFocus() and TortoiseGMManager.selectedEntry and TortoiseGMManager.selectedEntry.lookupCommand == ".lookup item" then
+        return lookupBox
+    end
+    if TortoiseGMManager.GetFocusedMailItemInput then
+        return TortoiseGMManager.GetFocusedMailItemInput()
+    end
+    return nil
+end
+
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED"); eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
@@ -1112,6 +1135,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         TortoiseGMManager.currentCategory = TortoiseGMManager.GetDefaultCategory()
         TortoiseGMManagerDB.lastCategory = TortoiseGMManager.currentCategory
         restoreSavedPositions()
+        if TortoiseGMManager.InstallLinkHooks then TortoiseGMManager.InstallLinkHooks() end
         TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /fgmm.")
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then
         TortoiseGMManager.RefreshTarget()

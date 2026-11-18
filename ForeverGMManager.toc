@@ -13,3 +13,4 @@ Core.lua
 Lookup.lua
 UI.lua
 ResultsUI.lua
+MailUI.lua
