@@ -1019,10 +1019,10 @@ minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("
 -- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
 -- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
 local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
-minimapBack:SetWidth(30); minimapBack:SetHeight(30); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+minimapBack:SetWidth(27); minimapBack:SetHeight(27); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 -- A plain white circle, so the vertex colour comes out as true gold.
 minimapBack:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-minimapBack:SetVertexColor(Theme.colors.goldDim[1], Theme.colors.goldDim[2], Theme.colors.goldDim[3], 1)
+minimapBack:SetVertexColor(Theme.colors.goldDim[1], Theme.colors.goldDim[2], Theme.colors.goldDim[3], 0.7)
 local minimapIcon = minimapButton:CreateTexture(nil, "ARTWORK")
 minimapIcon:SetWidth(24); minimapIcon:SetHeight(24); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 minimapIcon:SetTexture(BRAND_ICON)
