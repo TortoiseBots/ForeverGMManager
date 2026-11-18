@@ -1006,7 +1006,15 @@ end
 
 local minimapButton = CreateFrame("Button", "TortoiseGMManagerMinimapButton", Minimap)
 minimapButton:SetWidth(31); minimapButton:SetHeight(31); minimapButton:SetFrameStrata("MEDIUM")
-minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+-- Keeps only the direction of (dx, dy) and puts the button on the minimap rim, whatever the minimap size.
+local function placeMinimapButton(dx, dy)
+    local distance = math.sqrt((dx * dx) + (dy * dy)); if distance < 1 then dx, dy, distance = 1, 1, math.sqrt(2) end
+    local radius = (Minimap:GetWidth() or 140) / 2 + 5
+    local x = (dx / distance) * radius; local y = (dy / distance) * radius
+    minimapButton:ClearAllPoints(); minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    return x, y
+end
+placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
 -- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
 local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
@@ -1018,18 +1026,15 @@ TortoiseGMManager.minimapButton = minimapButton
 local function restoreSavedPositions()
     main:ClearAllPoints()
     main:SetPoint(TortoiseGMManagerDB.framePoint or "CENTER", UIParent, TortoiseGMManagerDB.frameRelativePoint or "CENTER", TortoiseGMManagerDB.frameX or 0, TortoiseGMManagerDB.frameY or 15)
-    minimapButton:ClearAllPoints()
-    minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+    placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 end
 
 local function updateMinimapButtonPosition()
-    local cursorX, cursorY = GetCursorPosition(); local scale = UIParent:GetScale()
+    local cursorX, cursorY = GetCursorPosition(); local scale = Minimap:GetEffectiveScale()
     if scale and scale > 0 then cursorX = cursorX / scale; cursorY = cursorY / scale end
     local centerX, centerY = Minimap:GetCenter(); if not centerX or not centerY then return end
-    local dx = cursorX - centerX; local dy = cursorY - centerY; local distance = math.sqrt((dx * dx) + (dy * dy)); if distance < 1 then return end
-    local radius = 78; local x = (dx / distance) * radius; local y = (dy / distance) * radius
-    minimapButton:ClearAllPoints(); minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
-    TortoiseGMManagerDB.minimapX = x; TortoiseGMManagerDB.minimapY = y
+    local dx = cursorX - centerX; local dy = cursorY - centerY; if (dx * dx) + (dy * dy) < 1 then return end
+    TortoiseGMManagerDB.minimapX, TortoiseGMManagerDB.minimapY = placeMinimapButton(dx, dy)
 end
 
 minimapButton:SetScript("OnDragStart", function(self)
