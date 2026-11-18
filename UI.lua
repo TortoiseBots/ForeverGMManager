@@ -389,6 +389,8 @@ for rowIndex = 1, ROWS_PER_PAGE do
         local interaction = TortoiseGMManager.GetInteraction(entry)
         if getSingleToggle(entry) then
             executeToggle(entry, 1)
+        elseif interaction == "open" then
+            if entry.opens == "mail" and TortoiseGMManager.ShowMailComposer then TortoiseGMManager.ShowMailComposer() end
         elseif interaction == "execute" then
             TortoiseGMManager.Execute(entry.command)
         else
@@ -401,6 +403,7 @@ for rowIndex = 1, ROWS_PER_PAGE do
         if self.entry then
             local title
             if TortoiseGMManager.IsDangerous(self.entry.command) then title = "Review dangerous command"
+            elseif self.entry.opens then title = "Open window"
             elseif self.entry.direct then title = "Run now" else title = "Load into command bar" end
             showTooltip(self, "ANCHOR_RIGHT", title, {
                 { self.entry.detail or "", 1, 1, 1 },
@@ -963,6 +966,7 @@ function TortoiseGMManager.RefreshList()
                 row.toggleOffButton:Hide()
                 row.useButton:SetLabelColor(nil)
                 if interaction == "review" then row.useButton:SetText("REVIEW"); row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.red)
+                elseif interaction == "open" then row.useButton:SetText("OPEN"); row.useButton:SetVariant("primary")
                 elseif interaction == "execute" then row.useButton:SetText("RUN NOW"); row.useButton:SetVariant("primary")
                 else row.useButton:SetText("CONFIGURE"); row.useButton:SetVariant("secondary") end
             end
@@ -1027,7 +1031,7 @@ local function placeMinimapButton(dx, dy)
     return x, y
 end
 placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
-minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
+minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp"); minimapButton:RegisterForDrag("LeftButton")
 -- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
 -- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
 local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
@@ -1041,10 +1045,15 @@ minimapIcon:SetTexture(BRAND_ICON)
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 TortoiseGMManager.minimapButton = minimapButton
 
+function TortoiseGMManager.RefreshMinimapButton()
+    if TortoiseGMManager.IsMinimapHidden() then minimapButton:Hide() else minimapButton:Show() end
+end
+
 local function restoreSavedPositions()
     main:ClearAllPoints()
     main:SetPoint(TortoiseGMManagerDB.framePoint or "CENTER", UIParent, TortoiseGMManagerDB.frameRelativePoint or "CENTER", TortoiseGMManagerDB.frameX or 0, TortoiseGMManagerDB.frameY or 15)
     placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+    TortoiseGMManager.RefreshMinimapButton()
 end
 
 local function updateMinimapButtonPosition()
@@ -1065,26 +1074,57 @@ minimapButton:SetScript("OnDragStop", function(self)
     if not TortoiseGMManager.minimapDragging then return end
     TortoiseGMManager.minimapDragging = false; self:SetScript("OnUpdate", nil); updateMinimapButtonPosition()
 end)
-minimapButton:SetScript("OnClick", function()
+minimapButton:SetScript("OnClick", function(self, button)
     if TortoiseGMManager.minimapWasDragged then TortoiseGMManager.minimapWasDragged = false; return end
+    if button == "RightButton" then
+        TortoiseGMManager.SetMinimapHidden(true)
+        GameTooltip:Hide()
+        TortoiseGMManager.Print("Minimap button hidden. Type /fgmm minimap to show it again.")
+        return
+    end
     TortoiseGMManager.ToggleUI()
 end)
 minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("ForeverGMManager", COLORS.gold[1], COLORS.gold[2], COLORS.gold[3])
-    GameTooltip:AddLine("Click: open / close", 1, 1, 1); GameTooltip:AddLine("Shift-drag: move around minimap", 0.75, 0.75, 0.75); GameTooltip:Show()
+    GameTooltip:AddLine("Click: open / close", 1, 1, 1); GameTooltip:AddLine("Shift-drag: move around minimap", 0.75, 0.75, 0.75); GameTooltip:AddLine("Right-click: hide minimap button", 0.75, 0.75, 0.75); GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 SLASH_TORTOISEGMMANAGER1 = "/fgmm"
 SLASH_TORTOISEGMMANAGER2 = "/tgmm"
 SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
-    msg = trim(msg); TortoiseGMManager.ShowUI()
+    msg = trim(msg)
+    if string.lower(msg) == "minimap" then
+        local hidden = TortoiseGMManager.ToggleMinimapButton()
+        TortoiseGMManager.Print(hidden and "Minimap button hidden. Type /fgmm minimap to show it again." or "Minimap button shown.")
+        return
+    end
+    TortoiseGMManager.ShowUI()
     if msg ~= "" then
         TortoiseGMManager.selectedEntry = nil; TortoiseGMManager.structuredValues = nil
         TortoiseGMManager.RefreshArgumentControls(); lookupButton:Disable(); commandBox:SetText(TortoiseGMManager.NormalizeCommand(msg))
         hintText:SetText("Command supplied through /fgmm. Review the read-only preview, then press EXECUTE.")
         refreshComposerHeader()
     end
+end
+
+function TortoiseGMManager.GetFocusedItemLinkTarget()
+    if ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow() then return nil end
+    local i
+    for i = 1, #(TortoiseGMManager.argumentControls or {}) do
+        local control = TortoiseGMManager.argumentControls[i]
+        local arg = control.argument
+        if control.edit and control.edit:IsVisible() and control.edit:HasFocus() and arg and (arg.key == "itemId" or (arg.type == "lookup-id" and TortoiseGMManager.selectedEntry and TortoiseGMManager.selectedEntry.lookupCommand == ".lookup item")) then
+            return control.edit
+        end
+    end
+    if lookupBox and lookupBox:IsVisible() and lookupBox:HasFocus() and TortoiseGMManager.selectedEntry and TortoiseGMManager.selectedEntry.lookupCommand == ".lookup item" then
+        return lookupBox
+    end
+    if TortoiseGMManager.GetFocusedMailItemInput then
+        return TortoiseGMManager.GetFocusedMailItemInput()
+    end
+    return nil
 end
 
 local eventFrame = CreateFrame("Frame")
@@ -1095,6 +1135,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         TortoiseGMManager.currentCategory = TortoiseGMManager.GetDefaultCategory()
         TortoiseGMManagerDB.lastCategory = TortoiseGMManager.currentCategory
         restoreSavedPositions()
+        if TortoiseGMManager.InstallLinkHooks then TortoiseGMManager.InstallLinkHooks() end
         TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /fgmm.")
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then
         TortoiseGMManager.RefreshTarget()

@@ -29,6 +29,7 @@ end
 DEFAULT_CHAT_FRAME = nil
 
 dofile("Data.lua")
+dofile("Teleports.lua")
 dofile("Core.lua")
 dofile("Lookup.lua")
 
