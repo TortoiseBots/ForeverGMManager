@@ -7,8 +7,10 @@
 ## SavedVariables: TortoiseGMManagerDB
 
 Data.lua
+Teleports.lua
 Theme.lua
 Core.lua
 Lookup.lua
 UI.lua
 ResultsUI.lua
+MailUI.lua

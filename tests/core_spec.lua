@@ -25,6 +25,7 @@ C_ChatInfo = {
 DEFAULT_CHAT_FRAME = nil
 
 dofile("Data.lua")
+dofile("Teleports.lua")
 dofile("Core.lua")
 
 -- Keep the behavioral assertions readable while exercising the renamed addon.
@@ -309,6 +310,174 @@ expectEqual(refreshCount, refreshBeforeIgnore, "ignored messages do not trigger 
 
 TortoiseGM.RefreshList = savedRefreshList
 UnitName = nil
+
+-- Minimap visibility persistence and toggling
+expectEqual(TortoiseGMDB.minimapHidden, false, "minimapHidden defaults to false")
+expectEqual(TortoiseGM.IsMinimapHidden(), false, "IsMinimapHidden starts false")
+local minimapRefreshes = 0
+local savedRefreshMinimap = TortoiseGM.RefreshMinimapButton
+TortoiseGM.RefreshMinimapButton = function() minimapRefreshes = minimapRefreshes + 1 end
+expectEqual(TortoiseGM.ToggleMinimapButton(), true, "ToggleMinimapButton hides minimap button")
+expectEqual(TortoiseGMDB.minimapHidden, true, "minimapHidden persists as true")
+expectEqual(minimapRefreshes, 1, "RefreshMinimapButton called on toggle")
+expectEqual(TortoiseGM.ToggleMinimapButton(), false, "ToggleMinimapButton shows minimap button again")
+expectEqual(TortoiseGM.SetMinimapHidden(true), true, "SetMinimapHidden sets hidden true")
+expectEqual(TortoiseGM.IsMinimapHidden(), true, "IsMinimapHidden reflects true")
+TortoiseGM.RefreshMinimapButton = savedRefreshMinimap
+
+-- New ForeverAdmin-ported commands: composition, danger flags, and lookup support
+local gobjectMoveEntry = TortoiseGM.FindEntry("gobject-move")
+expectTrue(gobjectMoveEntry ~= nil, "gobject-move entry exists")
+expectTrue(gobjectMoveEntry.danger == true, "gobject-move is marked dangerous")
+expectTrue(TortoiseGM.IsDangerous(".gobject move 123"), "IsDangerous flags .gobject move")
+expectEqual(TortoiseGM.ComposeValues(gobjectMoveEntry, { spawnId = 42 }), ".gobject move 42", "gobject-move composes spawnId")
+
+local npcMovetypeEntry = TortoiseGM.FindEntry("npc-set-movetype")
+expectTrue(npcMovetypeEntry ~= nil, "npc-set-movetype entry exists")
+expectTrue(npcMovetypeEntry.danger == true, "npc-set-movetype is marked dangerous")
+expectEqual(TortoiseGM.ComposeValues(npcMovetypeEntry, { movetype = "random" }), ".npc set movetype random", "npc-set-movetype composes toggle option")
+
+local reloadTableEntry = TortoiseGM.FindEntry("reload-table")
+expectTrue(reloadTableEntry ~= nil, "reload-table entry exists")
+expectTrue(reloadTableEntry.danger == true, "reload-table is marked dangerous")
+expectEqual(TortoiseGM.ComposeValues(reloadTableEntry, { table = "smart_scripts" }), ".reload smart_scripts", "reload-table composes table name")
+
+local loglevelEntry = TortoiseGM.FindEntry("server-set-loglevel")
+expectTrue(loglevelEntry ~= nil, "server-set-loglevel entry exists")
+expectEqual(TortoiseGM.ComposeValues(loglevelEntry, { type = "l", name = "network", level = 2 }), ".server set loglevel l network 2", "server-set-loglevel composes all args")
+
+-- Ported teleports are direct travel actions searchable by zone and point name.
+local stockadeEntry = TortoiseGM.FindEntry("go-xyz-the-stockade")
+expectTrue(stockadeEntry ~= nil, "ported teleport entry is loaded")
+expectEqual(stockadeEntry.category, "travel", "ported teleport is in travel category")
+expectEqual(stockadeEntry.direct, true, "ported teleport is direct")
+expectEqual(stockadeEntry.access, "Moderator", "ported teleport uses Moderator access")
+expectEqual(stockadeEntry.label, "Stormwind: The Stockade (Dungeon Entrance) (General)", "ported teleport label is Zone: Point")
+expectEqual(stockadeEntry.command, ".go xyz -8779.9 834.35 94.68 0", "ported teleport builds .go xyz x y z map")
+
+local thanesEntry = TortoiseGM.FindEntry("go-xyz-hall-of-thanes-entrance")
+expectTrue(thanesEntry ~= nil, "teleport with orientation is loaded")
+expectEqual(thanesEntry.command, ".go xyz -4820.631836 -936.790649 399.042877 0 1.951188", "ported teleport appends orientation when present")
+
+expectEqual(TortoiseGM.FindEntry("go-xyz-stormwind"), nil, "existing .tele Stormwind shortcut is not duplicated")
+expectEqual(TortoiseGM.FindEntry("go-xyz-zephris"), nil, "existing .tele Zephras shortcut is not duplicated")
+expectEqual(TortoiseGM.FindEntry("go-xyz-naxxramas-instance"), nil, "existing .tele Naxx shortcut is not duplicated")
+
+local zoneMatches = TortoiseGM.GetFilteredCommands("travel", "duskwood")
+local foundDarkshire = false
+local matchIndex
+for matchIndex = 1, #zoneMatches do
+    if zoneMatches[matchIndex].id == "go-xyz-darkshire" then foundDarkshire = true end
+end
+expectTrue(foundDarkshire, "catalogue search finds ported teleports by zone name")
+
+local pointMatches = TortoiseGM.GetFilteredCommands("travel", "darkshire")
+local foundPoint = false
+for matchIndex = 1, #pointMatches do
+    if pointMatches[matchIndex].id == "go-xyz-darkshire" then foundPoint = true end
+end
+expectTrue(foundPoint, "catalogue search finds ported teleports by point name")
+
+-- Mail composer catalogue entry and core attachment/command logic.
+local mailEntry = TortoiseGM.FindEntry("mail-composer")
+expectTrue(mailEntry ~= nil, "mail-composer catalogue entry exists")
+expectEqual(mailEntry and mailEntry.category, "player", "mail-composer is in player category")
+expectEqual(TortoiseGM.GetInteraction(mailEntry), "open", "mail-composer interaction is open")
+
+TortoiseGM.ClearMailItems()
+local okAdd, errAdd = TortoiseGM.AddMailItem("abc", "Bad", 1)
+expectFalse(okAdd, "invalid item id rejected")
+expectTrue(errAdd ~= nil, "invalid item id returns error")
+
+local idx
+for idx = 1, 12 do
+    local added = TortoiseGM.AddMailItem(1000 + idx, "Item " .. idx, 1)
+    expectTrue(added, "can add attachment #" .. tostring(idx))
+end
+local overLimit, overErr = TortoiseGM.AddMailItem(9999, "Extra", 1)
+expectFalse(overLimit, "13th distinct attachment rejected")
+expectTrue(overErr ~= nil, "13th attachment returns error")
+
+-- Stacking an existing item id increases count instead of using a new slot.
+local stacked = TortoiseGM.AddMailItem(1001, "Item 1", 4)
+expectTrue(stacked, "stacking existing item id succeeds")
+expectEqual(TortoiseGM.mailItems[1].count, 5, "stacked item count updated")
+
+TortoiseGM.SetMailItemCount(1, 3)
+expectEqual(TortoiseGM.mailItems[1].count, 3, "SetMailItemCount updates count")
+TortoiseGM.RemoveMailItem(2)
+expectEqual(#TortoiseGM.mailItems, 11, "RemoveMailItem removes entry")
+
+TortoiseGM.ClearMailItems()
+expectEqual(#TortoiseGM.mailItems, 0, "ClearMailItems empties list")
+
+TortoiseGM.AddMailItem(6948, "Hearthstone", 1)
+TortoiseGM.AddMailItem(2901, "Mining Pick", 2)
+local itemsCmd, itemsValid, itemsErr = TortoiseGM.BuildMailCommand("items", {
+    recipient = "Thrall",
+    subject = 'Gift "Special"',
+    body = "Enjoy",
+})
+expectTrue(itemsValid, "valid .send items command builds")
+expectEqual(itemsErr, nil, "no error for valid .send items")
+expectEqual(itemsCmd, '.send items Thrall "Gift \'Special\'" "Enjoy" 6948:1 2901:2', "exact .send items command format")
+
+local _, noRecipValid = TortoiseGM.BuildMailCommand("items", { recipient = "", subject = "Hi", body = "" })
+expectFalse(noRecipValid, "empty recipient fails validation")
+local _, spaceRecipValid = TortoiseGM.BuildMailCommand("items", { recipient = "Bad Name", subject = "Hi", body = "" })
+expectFalse(spaceRecipValid, "recipient with space fails validation")
+local _, noSubjValid = TortoiseGM.BuildMailCommand("items", { recipient = "Thrall", subject = "", body = "" })
+expectFalse(noSubjValid, "empty subject fails validation")
+local _, longValid, longErr = TortoiseGM.BuildMailCommand("items", { recipient = "Thrall", subject = "Test", body = string.rep("x", 240) })
+expectFalse(longValid, ">255 byte mail command fails validation")
+expectTrue(longErr ~= nil and string.find(longErr, "255", 1, true) ~= nil, ">255 byte error mentions 255")
+
+expectEqual(TortoiseGM.ComputeMailCopper(2, 50, 75), 25075, "ComputeMailCopper computes total copper")
+local moneyCmd, moneyValid = TortoiseGM.BuildMailCommand("money", {
+    recipient = "Jaina",
+    subject = "Gold",
+    body = "",
+    gold = 1,
+    silver = 2,
+    copper = 3,
+})
+expectTrue(moneyValid, "valid .send money command builds")
+expectEqual(moneyCmd, '.send money Jaina "Gold" "" 10203', "exact .send money command format")
+local _, zeroMoneyValid = TortoiseGM.BuildMailCommand("money", { recipient = "Jaina", subject = "Gold", body = "", gold = 0, silver = 0, copper = 0 })
+expectFalse(zeroMoneyValid, "zero money fails validation")
+
+-- Shift+Click item link extraction and focus-guarded handling.
+local linkId, linkName = TortoiseGM.ExtractItemIdFromLink("|cff9d9d9d|Hitem:6948:0:0:0:0:0:0:0|h[Hearthstone]|h|r")
+expectEqual(linkId, 6948, "ExtractItemIdFromLink parses item id")
+expectEqual(linkName, "Hearthstone", "ExtractItemIdFromLink parses item name")
+local spellLinkId = TortoiseGM.ExtractItemIdFromLink("|cff71d5ff|Hspell:133|h[Fireball]|h|r")
+expectEqual(spellLinkId, nil, "ExtractItemIdFromLink ignores non-item links")
+
+local focusedText = nil
+local mockTarget = { SetText = function(_, v) focusedText = v end }
+TortoiseGM.GetFocusedItemLinkTarget = function() return nil end
+expectFalse(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "ignores item link when no addon field is focused")
+expectEqual(focusedText, nil, "unfocused target stays unchanged")
+
+TortoiseGM.GetFocusedItemLinkTarget = function() return mockTarget end
+now = 200
+expectTrue(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "fills focused item-ID field on item link")
+expectEqual(focusedText, "6948", "focused target receives numeric item ID")
+focusedText = nil
+expectFalse(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "deduplicates rapid duplicate hook call for same item")
+now = 201
+expectTrue(TortoiseGM.HandleItemLinkClick("|Hitem:6948:0:0:0|h[Hearthstone]|h"), "accepts item link again after cooldown")
+
+-- InstallLinkHooks is guarded and hooks Classic 1.15 link functions.
+local hookedNames = {}
+hooksecurefunc = function(name, fn) hookedNames[name] = fn end
+ChatEdit_InsertLink = function() end
+HandleModifiedItemClick = function() end
+TortoiseGM.linkHooksInstalled = false
+TortoiseGM.InstallLinkHooks()
+expectTrue(TortoiseGM.linkHooksInstalled, "InstallLinkHooks marks hooks installed")
+expectTrue(type(hookedNames["ChatEdit_InsertLink"]) == "function", "ChatEdit_InsertLink hooked")
+expectTrue(type(hookedNames["HandleModifiedItemClick"]) == "function", "HandleModifiedItemClick hooked")
 
 if failures > 0 then
     error(tostring(failures) .. " of " .. tostring(checks) .. " checks failed")
