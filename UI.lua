@@ -940,14 +940,26 @@ function TortoiseGMManager.RefreshList()
             local toggle = getSingleToggle(entry)
             row.useButton:ClearAllPoints()
             if toggle and toggle.options and #toggle.options >= 2 then
+                local toggleState = TortoiseGMManager.GetToggleState(entry.id)
                 row.useButton:SetWidth(42); row.useButton:SetPoint("RIGHT", row.toggleOffButton, "LEFT", 1, 0)
                 row.useButton:SetText(toggle.options[1].label or "ON")
-                row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.green)
+                if toggleState == "on" then
+                    row.useButton:SetVariant("accent"); row.useButton:SetLabelColor(nil)
+                else
+                    row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.green)
+                end
                 row.toggleOffButton:SetText(toggle.options[2].label or "OFF")
-                row.toggleOffButton:SetLabelColor(COLORS.muted)
+                if toggleState == "off" then
+                    row.toggleOffButton:SetVariant("accent"); row.toggleOffButton:SetLabelColor(nil)
+                else
+                    row.toggleOffButton:SetVariant("secondary"); row.toggleOffButton:SetLabelColor(COLORS.muted)
+                end
+                row.useButton:SetFrameLevel(row:GetFrameLevel() + (toggleState == "on" and 2 or 1))
+                row.toggleOffButton:SetFrameLevel(row:GetFrameLevel() + (toggleState == "off" and 2 or 1))
                 row.toggleOffButton:Show()
             else
                 row.useButton:SetWidth(84); row.useButton:SetPoint("RIGHT", row.favoriteButton, "LEFT", -6, 0)
+                row.useButton:SetFrameLevel(row:GetFrameLevel() + 1)
                 row.toggleOffButton:Hide()
                 row.useButton:SetLabelColor(nil)
                 if interaction == "review" then row.useButton:SetText("REVIEW"); row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.red)
@@ -1076,7 +1088,7 @@ SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED"); eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "VARIABLES_LOADED" then
         TortoiseGMManager.InitializeDB()
@@ -1084,5 +1096,10 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         TortoiseGMManagerDB.lastCategory = TortoiseGMManager.currentCategory
         restoreSavedPositions()
         TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /fgmm.")
-    elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then TortoiseGMManager.RefreshTarget() end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then
+        TortoiseGMManager.RefreshTarget()
+    elseif event == "CHAT_MSG_SYSTEM" then
+        local text = ...
+        if text and TortoiseGMManager.ParseToggleSystemMessage then TortoiseGMManager.ParseToggleSystemMessage(text) end
+    end
 end)

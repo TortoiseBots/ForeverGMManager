@@ -60,6 +60,7 @@ function TortoiseGMManager.InitializeDB()
     if not TortoiseGMManagerDB then TortoiseGMManagerDB = {} end
     if not TortoiseGMManagerDB.history then TortoiseGMManagerDB.history = {} end
     if not TortoiseGMManagerDB.favourites then TortoiseGMManagerDB.favourites = {} end
+    if not TortoiseGMManagerDB.toggleStates then TortoiseGMManagerDB.toggleStates = {} end
     TortoiseGMManager.MigrateFavourites()
     if TortoiseGMManagerDB.lastCategory == "history" or TortoiseGMManagerDB.lastCategory == "quick" or not TortoiseGMManagerDB.lastCategory then
         TortoiseGMManagerDB.lastCategory = #TortoiseGMManagerDB.favourites > 0 and "favourites" or "all"
@@ -244,6 +245,127 @@ function TortoiseGMManager.AddHistory(command)
     table.insert(TortoiseGMManagerDB.history, 1, command)
     while #TortoiseGMManagerDB.history > 20 do table.remove(TortoiseGMManagerDB.history) end
 end
+local toggleSystemReplies = {
+    ["gm mode is on"] = { id = "gm-mode", state = "on" },
+    ["gm mode is off"] = { id = "gm-mode", state = "off" },
+    ["you are now visible."] = { id = "visibility", state = "on" },
+    ["you are now invisible."] = { id = "visibility", state = "off" },
+    ["you are: visible"] = { id = "visibility", state = "on" },
+    ["you are: invisible"] = { id = "visibility", state = "off" },
+    ["gm chat badge is on"] = { id = "gm-chat", state = "on" },
+    ["gm chat badge is off"] = { id = "gm-chat", state = "off" },
+    ["godmode is on. you won't take damage."] = { id = "god-mode", state = "on" },
+    ["godmode is off. you can take damage."] = { id = "god-mode", state = "off" },
+    ["godmode: on."] = { id = "god-mode", state = "on" },
+    ["godmode: off."] = { id = "god-mode", state = "off" },
+    ["casttime cheat is on. your spells won't have a casttime."] = { id = "cheat-casttime", state = "on" },
+    ["casttime cheat is off. your spells will have a casttime."] = { id = "cheat-casttime", state = "off" },
+    ["casttime: on."] = { id = "cheat-casttime", state = "on" },
+    ["casttime: off."] = { id = "cheat-casttime", state = "off" },
+    ["cooldown cheat is on. you are not on the global cooldown."] = { id = "cheat-cooldown", state = "on" },
+    ["cooldown cheat is off. you are on the global cooldown."] = { id = "cheat-cooldown", state = "off" },
+    ["cooldown: on."] = { id = "cheat-cooldown", state = "on" },
+    ["cooldown: off."] = { id = "cheat-cooldown", state = "off" },
+    ["power cheat is on. you don't need mana/rage/energy to use spells."] = { id = "cheat-power", state = "on" },
+    ["power cheat is off. you need mana/rage/energy to use spells."] = { id = "cheat-power", state = "off" },
+    ["power: on."] = { id = "cheat-power", state = "on" },
+    ["power: off."] = { id = "cheat-power", state = "off" },
+    ["waterwalking is on. you can walk on water."] = { id = "waterwalk", state = "on" },
+    ["waterwalking is off. you can't walk on water."] = { id = "waterwalk", state = "off" },
+    ["waterwalk: on."] = { id = "waterwalk", state = "on" },
+    ["waterwalk: off."] = { id = "waterwalk", state = "off" },
+    ["taxinodes: on."] = { id = "taxicheat", state = "on" },
+    ["taxinodes: off."] = { id = "taxicheat", state = "off" },
+    ["accepting whisper: on"] = { id = "whispers", state = "on" },
+    ["accepting whisper: off"] = { id = "whispers", state = "off" },
+}
+
+local function stripChatFormatting(text)
+    text = string.gsub(text or "", "|c%x%x%x%x%x%x%x%x", "")
+    return string.gsub(text, "|r", "")
+end
+
+local function extractLinkedName(prefix)
+    local name = string.match(prefix, "|Hplayer:([^|:]+)")
+    if name then return name end
+    name = string.match(prefix, "%[([^%]]+)%]")
+    return trim(name or prefix)
+end
+
+local function isSelfOrUnknown(name)
+    if not UnitName then return true end
+    local player = UnitName("player")
+    if not player or player == "" then return true end
+    return lower(name) == lower(player)
+end
+
+function TortoiseGMManager.GetToggleState(id)
+    TortoiseGMManager.InitializeDB()
+    return id and TortoiseGMManagerDB.toggleStates[id] or nil
+end
+
+function TortoiseGMManager.SetToggleState(id, state)
+    if not id or (state ~= "on" and state ~= "off") then return false end
+    TortoiseGMManager.InitializeDB()
+    if TortoiseGMManagerDB.toggleStates[id] ~= state then
+        TortoiseGMManagerDB.toggleStates[id] = state
+        if TortoiseGMManager.RefreshList then TortoiseGMManager.RefreshList() end
+    end
+    return true
+end
+
+function TortoiseGMManager.RecordToggleCommand(command)
+    local normalized = lower(TortoiseGMManager.NormalizeCommand(command))
+    local i, j
+    for i = 1, #(TortoiseGMManager.commands or {}) do
+        local entry = TortoiseGMManager.commands[i]
+        local arguments = entry.arguments
+        if arguments and #arguments == 1 and arguments[1].type == "toggle" then
+            local base = lower(TortoiseGMManager.NormalizeCommand(entry.command))
+            if normalized == base .. " on" then return TortoiseGMManager.SetToggleState(entry.id, "on") end
+            if normalized == base .. " off" then return TortoiseGMManager.SetToggleState(entry.id, "off") end
+            for j = 1, #(entry.legacyCommands or {}) do
+                local legacy = lower(TortoiseGMManager.NormalizeCommand(entry.legacyCommands[j]))
+                if normalized == legacy then
+                    if string.sub(legacy, -3) == " on" or string.sub(legacy, -2) == " 1" then
+                        return TortoiseGMManager.SetToggleState(entry.id, "on")
+                    elseif string.sub(legacy, -4) == " off" or string.sub(legacy, -2) == " 0" then
+                        return TortoiseGMManager.SetToggleState(entry.id, "off")
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+function TortoiseGMManager.ParseToggleSystemMessage(text)
+    if type(text) ~= "string" or text == "" then return nil end
+    local cleaned = trim(stripChatFormatting(text))
+    local match = toggleSystemReplies[lower(cleaned)]
+    if match then
+        TortoiseGMManager.SetToggleState(match.id, match.state)
+        return match.id, match.state
+    end
+    local flyPrefix, flyState = string.match(cleaned, "^(.-)'s Fly Mode (%a+)$")
+    if flyPrefix and (lower(flyState) == "on" or lower(flyState) == "off") and isSelfOrUnknown(extractLinkedName(flyPrefix)) then
+        local state = lower(flyState)
+        TortoiseGMManager.SetToggleState("gm-fly", state)
+        return "gm-fly", state
+    end
+    local taxiPrefix = string.match(cleaned, "^(.-) has access to all taxi nodes now %(until logout%)%.$")
+    if taxiPrefix and isSelfOrUnknown(extractLinkedName(taxiPrefix)) then
+        TortoiseGMManager.SetToggleState("taxicheat", "on")
+        return "taxicheat", "on"
+    end
+    taxiPrefix = string.match(cleaned, "^(.-) has no more access to all taxi nodes now %(only visited accessible%)%.$")
+    if taxiPrefix and isSelfOrUnknown(extractLinkedName(taxiPrefix)) then
+        TortoiseGMManager.SetToggleState("taxicheat", "off")
+        return "taxicheat", "off"
+    end
+    return nil
+end
+
 function TortoiseGMManager.SetPendingConfirmation(command) TortoiseGMManager.pendingCommand, TortoiseGMManager.pendingUntil = command, GetTime() + 5 end
 function TortoiseGMManager.ClearPendingConfirmation() TortoiseGMManager.pendingCommand, TortoiseGMManager.pendingUntil = nil, nil end
 
@@ -262,6 +384,7 @@ function TortoiseGMManager.Execute(command)
     TortoiseGMManager.ClearPendingConfirmation(); TortoiseGMManager.AddHistory(command)
     if TortoiseGMManager.BeginLookupCommand then TortoiseGMManager.BeginLookupCommand(command) end
     sendSay(command)
+    TortoiseGMManager.RecordToggleCommand(command)
     if TortoiseGMManager.SetStatus then TortoiseGMManager.SetStatus("Sent: " .. command, "ok") end
     if TortoiseGMManager.RefreshList then TortoiseGMManager.RefreshList() end
     return true

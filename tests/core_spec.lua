@@ -232,6 +232,84 @@ expectEqual(TortoiseGM.GetDefaultCategory(), "all", "All is default when no favo
 TortoiseGMDB.favourites = { TortoiseGM.commands[1].id }
 expectEqual(TortoiseGM.GetDefaultCategory(), "favourites", "Fav is default when favourites exist")
 
+-- Toggle state starts unknown, records ON/OFF on execution, and confirms from CHAT_MSG_SYSTEM.
+expectEqual(TortoiseGM.GetToggleState("gm-mode"), nil, "unknown toggle state starts nil")
+expectTrue(TortoiseGM.Execute(".gm on"), "executes .gm on")
+expectEqual(TortoiseGM.GetToggleState("gm-mode"), "on", "stores ON toggle state on run")
+expectTrue(TortoiseGM.Execute(".gm off"), "executes .gm off")
+expectEqual(TortoiseGM.GetToggleState("gm-mode"), "off", "stores OFF toggle state on run")
+expectTrue(TortoiseGM.Execute(".hover 1"), "executes legacy fly toggle")
+expectEqual(TortoiseGM.GetToggleState("gm-fly"), "on", "stores legacy toggle state on run")
+
+local refreshCount = 0
+local savedRefreshList = TortoiseGM.RefreshList
+TortoiseGM.RefreshList = function() refreshCount = refreshCount + 1 end
+
+function UnitName(unit)
+    if unit == "player" then return "Testgm" end
+    return nil
+end
+
+local replyCases = {
+    { "GM mode is ON", "gm-mode", "on" },
+    { "GM mode is OFF", "gm-mode", "off" },
+    { "You are now visible.", "visibility", "on" },
+    { "You are now invisible.", "visibility", "off" },
+    { "You are: visible", "visibility", "on" },
+    { "You are: invisible", "visibility", "off" },
+    { "GM Chat Badge is ON", "gm-chat", "on" },
+    { "GM Chat Badge is OFF", "gm-chat", "off" },
+    { "Godmode is ON. You won't take damage.", "god-mode", "on" },
+    { "Godmode is OFF. You can take damage.", "god-mode", "off" },
+    { "Godmode: ON.", "god-mode", "on" },
+    { "Godmode: OFF.", "god-mode", "off" },
+    { "CastTime Cheat is ON. Your spells won't have a casttime.", "cheat-casttime", "on" },
+    { "CastTime Cheat is OFF. Your spells will have a casttime.", "cheat-casttime", "off" },
+    { "Casttime: ON.", "cheat-casttime", "on" },
+    { "Casttime: OFF.", "cheat-casttime", "off" },
+    { "Cooldown Cheat is ON. You are not on the global cooldown.", "cheat-cooldown", "on" },
+    { "Cooldown Cheat is OFF. You are on the global cooldown.", "cheat-cooldown", "off" },
+    { "Cooldown: ON.", "cheat-cooldown", "on" },
+    { "Cooldown: OFF.", "cheat-cooldown", "off" },
+    { "Power Cheat is ON. You don't need mana/rage/energy to use spells.", "cheat-power", "on" },
+    { "Power Cheat is OFF. You need mana/rage/energy to use spells.", "cheat-power", "off" },
+    { "Power: ON.", "cheat-power", "on" },
+    { "Power: OFF.", "cheat-power", "off" },
+    { "Waterwalking is ON. You can walk on water.", "waterwalk", "on" },
+    { "Waterwalking is OFF. You can't walk on water.", "waterwalk", "off" },
+    { "Waterwalk: ON.", "waterwalk", "on" },
+    { "Waterwalk: OFF.", "waterwalk", "off" },
+    { "Taxinodes: ON.", "taxicheat", "on" },
+    { "Taxinodes: OFF.", "taxicheat", "off" },
+    { "|cffffffff|Hplayer:Testgm|h[Testgm]|h|r has access to all taxi nodes now (until logout).", "taxicheat", "on" },
+    { "|cffffffff|Hplayer:Testgm|h[Testgm]|h|r has no more access to all taxi nodes now (only visited accessible).", "taxicheat", "off" },
+    { "Accepting Whisper: ON", "whispers", "on" },
+    { "Accepting Whisper: off", "whispers", "off" },
+    { "|cffffffff|Hplayer:Testgm|h[Testgm]|h|r's Fly Mode on", "gm-fly", "on" },
+    { "|cffffffff|Hplayer:Testgm|h[Testgm]|h|r's Fly Mode off", "gm-fly", "off" },
+}
+
+local caseIndex
+for caseIndex = 1, #replyCases do
+    local reply = replyCases[caseIndex]
+    local parsedId, parsedState = TortoiseGM.ParseToggleSystemMessage(reply[1])
+    expectEqual(parsedId, reply[2], "parses id for: " .. reply[1])
+    expectEqual(parsedState, reply[3], "parses state for: " .. reply[1])
+    expectEqual(TortoiseGM.GetToggleState(reply[2]), reply[3], "stores state for: " .. reply[1])
+end
+
+local refreshBeforeIgnore = refreshCount
+local unknownId, unknownState = TortoiseGM.ParseToggleSystemMessage("Random system message: nothing to toggle")
+expectEqual(unknownId, nil, "ignores unknown system message")
+expectEqual(unknownState, nil, "unknown system message returns nil state")
+local otherFlyId = TortoiseGM.ParseToggleSystemMessage("|cffffffff|Hplayer:Otherplayer|h[Otherplayer]|h|r's Fly Mode on")
+expectEqual(otherFlyId, nil, "ignores fly mode reply for another player")
+expectEqual(TortoiseGM.GetToggleState("gm-fly"), "off", "other player's fly mode does not overwrite self")
+expectEqual(refreshCount, refreshBeforeIgnore, "ignored messages do not trigger UI refresh")
+
+TortoiseGM.RefreshList = savedRefreshList
+UnitName = nil
+
 if failures > 0 then
     error(tostring(failures) .. " of " .. tostring(checks) .. " checks failed")
 end

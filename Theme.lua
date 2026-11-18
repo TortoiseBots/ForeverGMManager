@@ -45,6 +45,7 @@ Theme.buttonVariants = {
     ghost = { bg = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, text = C.muted, hover = { 1, 1, 1, 0.08 }, shadow = true },
     danger = { bg = { 0.520, 0.130, 0.110, 1 }, border = { 0.880, 0.320, 0.260, 1 }, text = { 1, 0.930, 0.910 }, hover = { 1, 0.65, 0.55, 0.16 }, shadow = true },
     info = { bg = { 0.090, 0.180, 0.290, 1 }, border = { 0.330, 0.560, 0.830, 1 }, text = { 0.870, 0.930, 1 }, hover = { 0.70, 0.85, 1, 0.14 }, shadow = true },
+    accent = { bg = { 0.118, 0.122, 0.145, 1 }, border = C.gold, text = C.gold, hover = { 1, 0.745, 0.016, 0.14 }, shadow = true },
 }
 Theme.disabledButton = { bg = { 0.095, 0.097, 0.110, 1 }, border = { 0.170, 0.168, 0.160, 1 }, text = C.faint }
 
