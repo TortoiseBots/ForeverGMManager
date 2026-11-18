@@ -171,8 +171,9 @@ function Theme.Window(frame, options)
     local icon = Theme.Icon(frame, iconSize)
     icon:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -math.floor((headerHeight - iconSize) / 2) - 1)
     icon:SetTexture(options.icon or "Interface\\Icons\\INV_Misc_Gear_01")
-    if options.icon then icon:SetTexCoord(0, 1, 0, 1) end
     icon:SetBorderColor(C.goldDim[1], C.goldDim[2], C.goldDim[3], 1)
+    -- A custom brand icon is round with transparent corners: show it whole, without the square frame.
+    if options.icon then icon:SetTexCoord(0, 1, 0, 1); icon.border:SetAlpha(0) end
 
     local title = Theme.Text(frame, 14, C.gold)
     title:SetText(options.title or "")
@@ -205,11 +206,13 @@ end
 -- Icon with a crisp 1px dark frame. Returns the icon texture; the frame
 -- texture is available as icon.border so it can be tinted (e.g. item rarity).
 function Theme.Icon(parent, size, layer)
-    local border = parent:CreateTexture(nil, layer or "ARTWORK")
+    -- Explicit sublevels: the modern client does not draw same-level textures in creation order,
+    -- so without them the solid frame square can cover the icon.
+    local border = parent:CreateTexture(nil, layer or "ARTWORK", nil, -1)
     border:SetTexture(WHITE)
     border:SetVertexColor(0, 0, 0, 0.9)
     border:SetWidth(size); border:SetHeight(size)
-    local icon = parent:CreateTexture(nil, layer or "ARTWORK")
+    local icon = parent:CreateTexture(nil, layer or "ARTWORK", nil, 1)
     icon:SetPoint("TOPLEFT", border, "TOPLEFT", 1, -1)
     icon:SetPoint("BOTTOMRIGHT", border, "BOTTOMRIGHT", -1, 1)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
