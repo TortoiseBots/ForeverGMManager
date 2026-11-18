@@ -14,7 +14,7 @@ import pathlib
 import re
 import sys
 
-DEFAULT_SERVER_SRC = pathlib.Path("/mnt/pny-ssd/Tortoise WoW Projects/forever-local/src")
+DEFAULT_SERVER_SRC = pathlib.Path(__file__).resolve().parents[2] / "forever-local" / "src"
 SERVER_SRC = pathlib.Path(os.environ.get("FOREVER_SERVER_SRC", str(DEFAULT_SERVER_SRC)))
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH = REPO_ROOT / "Data.lua"

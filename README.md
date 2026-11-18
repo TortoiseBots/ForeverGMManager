@@ -151,7 +151,7 @@ sql/base/auth_database.sql
 
 `tests/verify_server_catalog.py` parses the server `ChatCommandTable` registry and RBAC security levels, then checks all addon presets, `SEARCH` routes, displayed access levels, and whether `COMMANDS.md` matches `Data.lua`.
 
-By default it looks at `/mnt/pny-ssd/Tortoise WoW Projects/forever-local/src`. Point it at another local checkout with `FOREVER_SERVER_SRC`:
+By default it looks at `forever-local/src` next to this repository (`../forever-local/src`). Point it at another local checkout with `FOREVER_SERVER_SRC`:
 
 ```bash
 FOREVER_SERVER_SRC=/path/to/TrinityCore python3 tests/verify_server_catalog.py
