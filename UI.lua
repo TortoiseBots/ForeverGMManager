@@ -135,7 +135,7 @@ main:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); saveMainP
 local BRAND_ICON = "Interface\\AddOns\\ForeverGMManager\\assets\\icon"
 local version = tostring(TortoiseGMManager.version or "?")
 Theme.Window(main, {
-    title = "|cffd8a657Forever|r|cff6cb8ffGM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
+    title = "|cffe4c46dForever|r|cffffbe04GM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
     subtitle = "FGMM " .. version .. " · GM command palette · by Sagiroth",
     icon = BRAND_ICON,
     headerHeight = HEADER_HEIGHT,

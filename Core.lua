@@ -22,7 +22,7 @@ local function copy(values)
 end
 
 function TortoiseGMManager.Print(message)
-    if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cffd8a657TortoiseGMManager:|r " .. tostring(message)) end
+    if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cffffbe04ForeverGMManager:|r " .. tostring(message)) end
 end
 
 function TortoiseGMManager.FindEntry(value)
