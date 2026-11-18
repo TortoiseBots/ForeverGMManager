@@ -14,9 +14,14 @@ import pathlib
 import re
 import sys
 
-DEFAULT_SERVER_SRC = pathlib.Path("/mnt/pny-ssd/Tortoise WoW Projects/forever-local/src")
+DEFAULT_SERVER_SRC = pathlib.Path(__file__).resolve().parents[2] / "forever-local" / "src"
 SERVER_SRC = pathlib.Path(os.environ.get("FOREVER_SERVER_SRC", str(DEFAULT_SERVER_SRC)))
-DATA_PATH = pathlib.Path(__file__).resolve().parents[1] / "Data.lua"
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+DATA_PATH = REPO_ROOT / "Data.lua"
+COMMANDS_MD_PATH = REPO_ROOT / "COMMANDS.md"
+
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+from gen_commands import render_commands_md
 
 SECURITY_LABELS = {
     0: "Player",
@@ -310,6 +315,12 @@ def main() -> int:
             failures.append(
                 f"Data.lua:{line_number}: FIND command {command} has no route in server registry"
             )
+
+    expected_commands_md = render_commands_md(data)
+    if not COMMANDS_MD_PATH.exists():
+        failures.append("COMMANDS.md is missing; run: python3 tools/gen_commands.py")
+    elif COMMANDS_MD_PATH.read_text(encoding="utf-8") != expected_commands_md:
+        failures.append("COMMANDS.md is out of date with Data.lua; run: python3 tools/gen_commands.py")
 
     if failures:
         print("FAIL: server catalogue contract")

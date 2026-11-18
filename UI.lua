@@ -131,12 +131,12 @@ main:RegisterForDrag("LeftButton")
 main:SetScript("OnDragStart", function(self) self:StartMoving() end)
 main:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); saveMainPosition(self) end)
 -- Same brand pattern as TortoiseBotsManager: two-tone name + version, and a
--- meta line underneath. The "ban hammer" (Sulfuras) marks the GM tool.
-local BRAND_ICON = "Interface\\Icons\\INV_Hammer_Unique_Sulfuras"
+-- meta line underneath.
+local BRAND_ICON = "Interface\\AddOns\\ForeverGMManager\\assets\\icon"
 local version = tostring(TortoiseGMManager.version or "?")
 Theme.Window(main, {
-    title = "|cffd8a657Tortoise|r|cff6cb8ffGM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
-    subtitle = "TGMM " .. version .. " · GM command palette · by Sagiroth",
+    title = "|cffe4c46dForever|r|cffffbe04GM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
+    subtitle = "FGMM " .. version .. " · GM command palette · by Sagiroth",
     icon = BRAND_ICON,
     headerHeight = HEADER_HEIGHT,
 })
@@ -940,14 +940,26 @@ function TortoiseGMManager.RefreshList()
             local toggle = getSingleToggle(entry)
             row.useButton:ClearAllPoints()
             if toggle and toggle.options and #toggle.options >= 2 then
+                local toggleState = TortoiseGMManager.GetToggleState(entry.id)
                 row.useButton:SetWidth(42); row.useButton:SetPoint("RIGHT", row.toggleOffButton, "LEFT", 1, 0)
                 row.useButton:SetText(toggle.options[1].label or "ON")
-                row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.green)
+                if toggleState == "on" then
+                    row.useButton:SetVariant("accent"); row.useButton:SetLabelColor(nil)
+                else
+                    row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.green)
+                end
                 row.toggleOffButton:SetText(toggle.options[2].label or "OFF")
-                row.toggleOffButton:SetLabelColor(COLORS.muted)
+                if toggleState == "off" then
+                    row.toggleOffButton:SetVariant("accent"); row.toggleOffButton:SetLabelColor(nil)
+                else
+                    row.toggleOffButton:SetVariant("secondary"); row.toggleOffButton:SetLabelColor(COLORS.muted)
+                end
+                row.useButton:SetFrameLevel(row:GetFrameLevel() + (toggleState == "on" and 2 or 1))
+                row.toggleOffButton:SetFrameLevel(row:GetFrameLevel() + (toggleState == "off" and 2 or 1))
                 row.toggleOffButton:Show()
             else
                 row.useButton:SetWidth(84); row.useButton:SetPoint("RIGHT", row.favoriteButton, "LEFT", -6, 0)
+                row.useButton:SetFrameLevel(row:GetFrameLevel() + 1)
                 row.toggleOffButton:Hide()
                 row.useButton:SetLabelColor(nil)
                 if interaction == "review" then row.useButton:SetText("REVIEW"); row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.red)
@@ -1005,33 +1017,42 @@ end
 ---------------------------------------------------------------------------
 
 local minimapButton = CreateFrame("Button", "TortoiseGMManagerMinimapButton", Minimap)
-minimapButton:SetWidth(30); minimapButton:SetHeight(30); minimapButton:SetFrameStrata("MEDIUM")
-minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+minimapButton:SetWidth(31); minimapButton:SetHeight(31); minimapButton:SetFrameStrata("MEDIUM")
+-- Keeps only the direction of (dx, dy) and puts the button on the minimap rim, whatever the minimap size.
+local function placeMinimapButton(dx, dy)
+    local distance = math.sqrt((dx * dx) + (dy * dy)); if distance < 1 then dx, dy, distance = 1, 1, math.sqrt(2) end
+    local radius = (Minimap:GetWidth() or 140) / 2 + 5
+    local x = (dx / distance) * radius; local y = (dy / distance) * radius
+    minimapButton:ClearAllPoints(); minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    return x, y
+end
+placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
-local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
-minimapIcon:SetWidth(20); minimapIcon:SetHeight(20); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
-minimapIcon:SetTexture(BRAND_ICON); minimapIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-local minimapBorder = minimapButton:CreateTexture(nil, "OVERLAY")
-minimapBorder:SetWidth(52); minimapBorder:SetHeight(52); minimapBorder:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", 0, 0)
-minimapBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+-- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
+-- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
+local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
+minimapBack:SetWidth(27); minimapBack:SetHeight(27); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+-- A plain white circle, so the vertex colour comes out as true gold.
+minimapBack:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+minimapBack:SetVertexColor(Theme.colors.goldDim[1], Theme.colors.goldDim[2], Theme.colors.goldDim[3], 0.7)
+local minimapIcon = minimapButton:CreateTexture(nil, "ARTWORK")
+minimapIcon:SetWidth(24); minimapIcon:SetHeight(24); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+minimapIcon:SetTexture(BRAND_ICON)
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 TortoiseGMManager.minimapButton = minimapButton
 
 local function restoreSavedPositions()
     main:ClearAllPoints()
     main:SetPoint(TortoiseGMManagerDB.framePoint or "CENTER", UIParent, TortoiseGMManagerDB.frameRelativePoint or "CENTER", TortoiseGMManagerDB.frameX or 0, TortoiseGMManagerDB.frameY or 15)
-    minimapButton:ClearAllPoints()
-    minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+    placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 end
 
 local function updateMinimapButtonPosition()
-    local cursorX, cursorY = GetCursorPosition(); local scale = UIParent:GetScale()
+    local cursorX, cursorY = GetCursorPosition(); local scale = Minimap:GetEffectiveScale()
     if scale and scale > 0 then cursorX = cursorX / scale; cursorY = cursorY / scale end
     local centerX, centerY = Minimap:GetCenter(); if not centerX or not centerY then return end
-    local dx = cursorX - centerX; local dy = cursorY - centerY; local distance = math.sqrt((dx * dx) + (dy * dy)); if distance < 1 then return end
-    local radius = 78; local x = (dx / distance) * radius; local y = (dy / distance) * radius
-    minimapButton:ClearAllPoints(); minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
-    TortoiseGMManagerDB.minimapX = x; TortoiseGMManagerDB.minimapY = y
+    local dx = cursorX - centerX; local dy = cursorY - centerY; if (dx * dx) + (dy * dy) < 1 then return end
+    TortoiseGMManagerDB.minimapX, TortoiseGMManagerDB.minimapY = placeMinimapButton(dx, dy)
 end
 
 minimapButton:SetScript("OnDragStart", function(self)
@@ -1067,7 +1088,7 @@ SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED"); eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "VARIABLES_LOADED" then
         TortoiseGMManager.InitializeDB()
@@ -1075,5 +1096,10 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         TortoiseGMManagerDB.lastCategory = TortoiseGMManager.currentCategory
         restoreSavedPositions()
         TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /fgmm.")
-    elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then TortoiseGMManager.RefreshTarget() end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then
+        TortoiseGMManager.RefreshTarget()
+    elseif event == "CHAT_MSG_SYSTEM" then
+        local text = ...
+        if text and TortoiseGMManager.ParseToggleSystemMessage then TortoiseGMManager.ParseToggleSystemMessage(text) end
+    end
 end)

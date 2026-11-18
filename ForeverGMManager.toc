@@ -3,6 +3,7 @@
 ## Notes: Compact GM command manager with searchable server-backed lookups for WoW Forever.
 ## Author: Sagiroth
 ## Version: 0.7.8
+## IconTexture: Interface\AddOns\ForeverGMManager\assets\icon
 ## SavedVariables: TortoiseGMManagerDB
 
 Data.lua
