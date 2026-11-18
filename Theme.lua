@@ -171,6 +171,7 @@ function Theme.Window(frame, options)
     local icon = Theme.Icon(frame, iconSize)
     icon:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -math.floor((headerHeight - iconSize) / 2) - 1)
     icon:SetTexture(options.icon or "Interface\\Icons\\INV_Misc_Gear_01")
+    if options.icon then icon:SetTexCoord(0, 1, 0, 1) end
     icon:SetBorderColor(C.goldDim[1], C.goldDim[2], C.goldDim[3], 1)
 
     local title = Theme.Text(frame, 14, C.gold)

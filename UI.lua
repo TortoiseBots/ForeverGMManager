@@ -131,12 +131,12 @@ main:RegisterForDrag("LeftButton")
 main:SetScript("OnDragStart", function(self) self:StartMoving() end)
 main:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); saveMainPosition(self) end)
 -- Same brand pattern as TortoiseBotsManager: two-tone name + version, and a
--- meta line underneath. The "ban hammer" (Sulfuras) marks the GM tool.
-local BRAND_ICON = "Interface\\Icons\\INV_Hammer_Unique_Sulfuras"
+-- meta line underneath.
+local BRAND_ICON = "Interface\\AddOns\\ForeverGMManager\\assets\\icon"
 local version = tostring(TortoiseGMManager.version or "?")
 Theme.Window(main, {
-    title = "|cffd8a657Tortoise|r|cff6cb8ffGM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
-    subtitle = "TGMM " .. version .. " · GM command palette · by Sagiroth",
+    title = "|cffd8a657Forever|r|cff6cb8ffGM|r |cfffff2ccManager|r  |cffffd200v" .. version .. "|r",
+    subtitle = "FGMM " .. version .. " · GM command palette · by Sagiroth",
     icon = BRAND_ICON,
     headerHeight = HEADER_HEIGHT,
 })
@@ -1010,7 +1010,7 @@ minimapButton:SetPoint("CENTER", Minimap, "CENTER", TortoiseGMManagerDB.minimapX
 minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
 local minimapIcon = minimapButton:CreateTexture(nil, "BACKGROUND")
 minimapIcon:SetWidth(20); minimapIcon:SetHeight(20); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
-minimapIcon:SetTexture(BRAND_ICON); minimapIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+minimapIcon:SetTexture(BRAND_ICON)
 local minimapBorder = minimapButton:CreateTexture(nil, "OVERLAY")
 minimapBorder:SetWidth(52); minimapBorder:SetHeight(52); minimapBorder:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", 0, 0)
 minimapBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
