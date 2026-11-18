@@ -1,26 +1,14 @@
+<p align="center"><img src="docs/icon.png" alt="ForeverGMManager icon" width="64"></p>
+
 # ForeverGMManager
 
 A compact GM command manager for **WoW Forever** (client **1.60.1**, interface **16001**).
 
-**Status:** Ported to WoW Forever; not yet tested in the game client.
+**Status:** Ported to WoW Forever. The window, icon, colours and minimap button are checked in the game client; the full command panel has not had a complete in-game pass yet.
 
 ForeverGMManager turns TrinityCore's dot-prefixed GM commands into a small searchable in-game interface. It is built for WoW Forever server administration and testing: teleporting, player and NPC management, items and spells, quests, gameobjects, lookups, moderation, and server utilities.
 
 The addon is **client-side only**. It does not connect to the database and does not bypass server permissions. Commands run through the normal GM chat-command path, and the server's RBAC permissions remain authoritative (a GM account is required).
-
-## Screenshots
-
-These screenshots are from the original Tortoise client; the WoW Forever port keeps the same layout and controls.
-
-<p align="center">
-  <img src="docs/design-preview/search-configure.webp" alt="Command search and configure" width="440"><br>
-  <sub><b>Search</b> — filter the command catalogue as you type and fill in the selected command.</sub>
-</p>
-
-<p align="center">
-  <img src="docs/design-preview/item-lookup.webp" alt="Item lookup results" width="760"><br>
-  <sub><b>Item lookup</b> — search by partial name, inspect item details, and act on the selected result.</sub>
-</p>
 
 ## Features
 
