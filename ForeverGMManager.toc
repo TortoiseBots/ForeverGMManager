@@ -1,5 +1,5 @@
 ## Interface: 11200
-## Title: TortoiseGMManager
+## Title: ForeverGMManager
 ## Notes: Compact GM command manager with searchable server-backed lookups for Tortoise WoW 1.18.1.
 ## Author: Sagiroth
 ## Version: 0.7.8
