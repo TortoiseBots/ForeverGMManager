@@ -1017,11 +1017,11 @@ end
 placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
 minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
 -- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
--- A slightly larger dark disc behind it gives a thin navy outline against the map.
+-- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
 local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
-minimapBack:SetWidth(28); minimapBack:SetHeight(28); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+minimapBack:SetWidth(30); minimapBack:SetHeight(30); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 minimapBack:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-minimapBack:SetVertexColor(Theme.colors.inset[1], Theme.colors.inset[2], Theme.colors.inset[3], 1)
+minimapBack:SetVertexColor(Theme.colors.goldDim[1], Theme.colors.goldDim[2], Theme.colors.goldDim[3], 1)
 local minimapIcon = minimapButton:CreateTexture(nil, "ARTWORK")
 minimapIcon:SetWidth(24); minimapIcon:SetHeight(24); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 minimapIcon:SetTexture(BRAND_ICON)
