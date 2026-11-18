@@ -1020,7 +1020,8 @@ minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("
 -- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
 local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
 minimapBack:SetWidth(30); minimapBack:SetHeight(30); minimapBack:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
-minimapBack:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+-- A plain white circle, so the vertex colour comes out as true gold.
+minimapBack:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
 minimapBack:SetVertexColor(Theme.colors.goldDim[1], Theme.colors.goldDim[2], Theme.colors.goldDim[3], 1)
 local minimapIcon = minimapButton:CreateTexture(nil, "ARTWORK")
 minimapIcon:SetWidth(24); minimapIcon:SetHeight(24); minimapIcon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
