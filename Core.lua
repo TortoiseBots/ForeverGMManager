@@ -7,6 +7,13 @@ local function trim(value)
 end
 
 local function lower(value) return string.lower(value or "") end
+local function sendSay(message)
+    if C_ChatInfo and C_ChatInfo.SendChatMessage then
+        C_ChatInfo.SendChatMessage(message, "SAY")
+    elseif SendChatMessage then
+        SendChatMessage(message, "SAY")
+    end
+end
 local function copy(values)
     local result = {}
     local key, value
@@ -21,10 +28,10 @@ end
 function TortoiseGMManager.FindEntry(value)
     local normalized = lower(TortoiseGMManager.NormalizeCommand(value))
     local i, j
-    for i = 1, table.getn(TortoiseGMManager.commands or {}) do
+    for i = 1, #(TortoiseGMManager.commands or {}) do
         local entry = TortoiseGMManager.commands[i]
         if entry.id == value or lower(TortoiseGMManager.NormalizeCommand(entry.command)) == normalized then return entry end
-        for j = 1, table.getn(entry.legacyCommands or {}) do
+        for j = 1, #(entry.legacyCommands or {}) do
             if lower(TortoiseGMManager.NormalizeCommand(entry.legacyCommands[j])) == normalized then return entry end
         end
     end
@@ -35,7 +42,7 @@ function TortoiseGMManager.MigrateFavourites()
     local old = TortoiseGMManagerDB.favourites or {}
     local migrated, included = {}, {}
     local i
-    for i = 1, table.getn(old) do
+    for i = 1, #old do
         local entry = TortoiseGMManager.FindEntry(old[i])
         local id = entry and entry.id or nil
         if id and not included[id] then table.insert(migrated, id); included[id] = true end
@@ -46,7 +53,7 @@ end
 
 function TortoiseGMManager.GetDefaultCategory()
     TortoiseGMManager.InitializeDB()
-    return table.getn(TortoiseGMManagerDB.favourites or {}) > 0 and "favourites" or "all"
+    return #(TortoiseGMManagerDB.favourites or {}) > 0 and "favourites" or "all"
 end
 
 function TortoiseGMManager.InitializeDB()
@@ -55,7 +62,7 @@ function TortoiseGMManager.InitializeDB()
     if not TortoiseGMManagerDB.favourites then TortoiseGMManagerDB.favourites = {} end
     TortoiseGMManager.MigrateFavourites()
     if TortoiseGMManagerDB.lastCategory == "history" or TortoiseGMManagerDB.lastCategory == "quick" or not TortoiseGMManagerDB.lastCategory then
-        TortoiseGMManagerDB.lastCategory = table.getn(TortoiseGMManagerDB.favourites) > 0 and "favourites" or "all"
+        TortoiseGMManagerDB.lastCategory = #TortoiseGMManagerDB.favourites > 0 and "favourites" or "all"
     end
     if TortoiseGMManagerDB.minimapX == nil then TortoiseGMManagerDB.minimapX = 52 end
     if TortoiseGMManagerDB.minimapY == nil then TortoiseGMManagerDB.minimapY = 52 end
@@ -75,7 +82,7 @@ end
 
 function TortoiseGMManager.GetEntryArguments(entry)
     if not entry then return {} end
-    if entry.arguments and table.getn(entry.arguments) > 0 then return entry.arguments end
+    if entry.arguments and #entry.arguments > 0 then return entry.arguments end
     if entry.hint and entry.hint ~= "" then
         return { { key = "arguments", label = entry.hint, type = "text", required = true, default = "" } }
     end
@@ -86,7 +93,7 @@ function TortoiseGMManager.InitializeValues(entry, current)
     local values = copy(current)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
     local i
-    for i = 1, table.getn(arguments) do
+    for i = 1, #arguments do
         local argument = arguments[i]
         if values[argument.key] == nil and argument.default ~= nil then values[argument.key] = argument.default end
     end
@@ -96,7 +103,7 @@ end
 function TortoiseGMManager.ValidateValues(entry, values)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
     local i
-    for i = 1, table.getn(arguments) do
+    for i = 1, #arguments do
         local argument = arguments[i]
         local value = values and values[argument.key]
         if argument.required and (value == nil or trim(tostring(value)) == "") then return false, argument.label .. " is required." end
@@ -119,7 +126,7 @@ function TortoiseGMManager.ComposeValues(entry, values)
     values = TortoiseGMManager.InitializeValues(entry, values)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
     local parts, i = {}, nil
-    for i = 1, table.getn(arguments) do
+    for i = 1, #arguments do
         local value = values[arguments[i].key]
         if value ~= nil and trim(tostring(value)) ~= "" then table.insert(parts, tostring(value)) end
     end
@@ -137,24 +144,24 @@ end
 
 function TortoiseGMManager.CycleToggle(argument, value, direction)
     local options = argument.options or {}
-    if table.getn(options) == 0 then return value end
+    if #options == 0 then return value end
     local index, i = 1, nil
-    for i = 1, table.getn(options) do if options[i].value == value then index = i; break end end
+    for i = 1, #options do if options[i].value == value then index = i; break end end
     index = index + (direction or 1)
-    if index > table.getn(options) then index = 1 elseif index < 1 then index = table.getn(options) end
+    if index > #options then index = 1 elseif index < 1 then index = #options end
     return options[index].value
 end
 
 function TortoiseGMManager.GetOptionLabel(argument, value)
     local i
-    for i = 1, table.getn(argument.options or {}) do if argument.options[i].value == value then return argument.options[i].label end end
+    for i = 1, #(argument.options or {}) do if argument.options[i].value == value then return argument.options[i].label end end
     return tostring(value or "")
 end
 
 function TortoiseGMManager.GetInteraction(entry)
     if not entry then return "load" end
     if entry.danger or TortoiseGMManager.IsDangerous(entry.command) then return "review" end
-    if table.getn(TortoiseGMManager.GetEntryArguments(entry)) > 0 then return "configure" end
+    if #TortoiseGMManager.GetEntryArguments(entry) > 0 then return "configure" end
     if entry.direct then return "execute" end
     return "load"
 end
@@ -186,12 +193,12 @@ function TortoiseGMManager.GetLookupActionDescriptor(result, currentValues)
     local values = TortoiseGMManager.InitializeValues(entry, currentValues)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
     local modifiers, lookupFound, i = {}, false, nil
-    for i = 1, table.getn(arguments) do
+    for i = 1, #arguments do
         local argument = arguments[i]
         if argument.type == "lookup-id" and not lookupFound then
             values[argument.key] = tostring(result.id)
             lookupFound = true
-        elseif table.getn(modifiers) < 3 then
+        elseif #modifiers < 3 then
             table.insert(modifiers, argument)
         end
     end
@@ -212,7 +219,7 @@ function TortoiseGMManager.ComposeLookupResult(entry, values, id)
     values = TortoiseGMManager.InitializeValues(entry, values)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
     local i, filled = nil, false
-    for i = 1, table.getn(arguments) do
+    for i = 1, #arguments do
         if arguments[i].type == "lookup-id" then values[arguments[i].key] = tostring(id); filled = true; break end
     end
     if not filled then return values, TortoiseGMManager.Compose(entry, tostring(id)) end
@@ -223,7 +230,7 @@ function TortoiseGMManager.IsDangerous(command)
     local normalized = lower(TortoiseGMManager.NormalizeCommand(command))
     if TortoiseGMManager.safeCommands and TortoiseGMManager.safeCommands[normalized] then return false end
     local i
-    for i = 1, table.getn(TortoiseGMManager.dangerPrefixes or {}) do
+    for i = 1, #(TortoiseGMManager.dangerPrefixes or {}) do
         local prefix = lower(TortoiseGMManager.NormalizeCommand(TortoiseGMManager.dangerPrefixes[i]))
         if normalized == prefix or string.sub(normalized, 1, string.len(prefix) + 1) == prefix .. " " then return true end
     end
@@ -233,9 +240,9 @@ end
 function TortoiseGMManager.AddHistory(command)
     TortoiseGMManager.InitializeDB()
     local i
-    for i = table.getn(TortoiseGMManagerDB.history), 1, -1 do if TortoiseGMManagerDB.history[i] == command then table.remove(TortoiseGMManagerDB.history, i) end end
+    for i = #TortoiseGMManagerDB.history, 1, -1 do if TortoiseGMManagerDB.history[i] == command then table.remove(TortoiseGMManagerDB.history, i) end end
     table.insert(TortoiseGMManagerDB.history, 1, command)
-    while table.getn(TortoiseGMManagerDB.history) > 20 do table.remove(TortoiseGMManagerDB.history) end
+    while #TortoiseGMManagerDB.history > 20 do table.remove(TortoiseGMManagerDB.history) end
 end
 function TortoiseGMManager.SetPendingConfirmation(command) TortoiseGMManager.pendingCommand, TortoiseGMManager.pendingUntil = command, GetTime() + 5 end
 function TortoiseGMManager.ClearPendingConfirmation() TortoiseGMManager.pendingCommand, TortoiseGMManager.pendingUntil = nil, nil end
@@ -243,7 +250,7 @@ function TortoiseGMManager.ClearPendingConfirmation() TortoiseGMManager.pendingC
 function TortoiseGMManager.Execute(command)
     command = TortoiseGMManager.NormalizeCommand(command)
     if command == "" or command == "." then if TortoiseGMManager.SetStatus then TortoiseGMManager.SetStatus("Enter a GM command first.", "error") end; return false end
-    if string.len(command) > 255 then if TortoiseGMManager.SetStatus then TortoiseGMManager.SetStatus("Command is longer than the Vanilla chat limit (255 characters).", "error") end; return false end
+    if string.len(command) > 255 then if TortoiseGMManager.SetStatus then TortoiseGMManager.SetStatus("Command is longer than the chat limit (255 characters).", "error") end; return false end
     if TortoiseGMManager.IsDangerous(command) then
         local now = GetTime()
         if TortoiseGMManager.pendingCommand ~= command or not TortoiseGMManager.pendingUntil or now > TortoiseGMManager.pendingUntil then
@@ -254,7 +261,7 @@ function TortoiseGMManager.Execute(command)
     end
     TortoiseGMManager.ClearPendingConfirmation(); TortoiseGMManager.AddHistory(command)
     if TortoiseGMManager.BeginLookupCommand then TortoiseGMManager.BeginLookupCommand(command) end
-    SendChatMessage(command, "SAY")
+    sendSay(command)
     if TortoiseGMManager.SetStatus then TortoiseGMManager.SetStatus("Sent: " .. command, "ok") end
     if TortoiseGMManager.RefreshList then TortoiseGMManager.RefreshList() end
     return true
@@ -264,8 +271,8 @@ function TortoiseGMManager.CommandMatchesEntry(entry, command)
     if not entry then return false end
     local normalized = lower(TortoiseGMManager.NormalizeCommand(command))
     local candidates, i = { entry.command }, nil
-    for i = 1, table.getn(entry.legacyCommands or {}) do table.insert(candidates, entry.legacyCommands[i]) end
-    for i = 1, table.getn(candidates) do
+    for i = 1, #(entry.legacyCommands or {}) do table.insert(candidates, entry.legacyCommands[i]) end
+    for i = 1, #candidates do
         local base = lower(TortoiseGMManager.NormalizeCommand(candidates[i]))
         if normalized == base or string.sub(normalized, 1, string.len(base) + 1) == base .. " " then return true end
     end
@@ -276,7 +283,7 @@ function TortoiseGMManager.RequestHelp(value)
     local entry = type(value) == "table" and value or nil
     if not entry then
         local normalized, best, i = TortoiseGMManager.NormalizeCommand(value), nil, nil
-        for i = 1, table.getn(TortoiseGMManager.commands or {}) do
+        for i = 1, #(TortoiseGMManager.commands or {}) do
             local candidate = TortoiseGMManager.commands[i]
             if TortoiseGMManager.CommandMatchesEntry(candidate, normalized) and (not best or string.len(candidate.command) > string.len(best.command)) then best = candidate end
         end
@@ -285,7 +292,7 @@ function TortoiseGMManager.RequestHelp(value)
     local command = entry and entry.command or value
     command = TortoiseGMManager.NormalizeCommand(command)
     if command == "" or command == "." then return false end
-    SendChatMessage(".help " .. string.sub(command, 2), "SAY"); return true
+    sendSay(".help " .. string.sub(command, 2)); return true
 end
 
 function TortoiseGMManager.IsFavourite(value)
@@ -293,19 +300,19 @@ function TortoiseGMManager.IsFavourite(value)
     local entry = TortoiseGMManager.FindEntry(value)
     local id = entry and entry.id or value
     local i
-    for i = 1, table.getn(TortoiseGMManagerDB.favourites) do if TortoiseGMManagerDB.favourites[i] == id then return true end end
+    for i = 1, #TortoiseGMManagerDB.favourites do if TortoiseGMManagerDB.favourites[i] == id then return true end end
     return false
 end
 function TortoiseGMManager.ToggleFavourite(entry)
     if not entry or not entry.id then return false end
     TortoiseGMManager.InitializeDB()
     local i
-    for i = table.getn(TortoiseGMManagerDB.favourites), 1, -1 do if TortoiseGMManagerDB.favourites[i] == entry.id then table.remove(TortoiseGMManagerDB.favourites, i); return false end end
+    for i = #TortoiseGMManagerDB.favourites, 1, -1 do if TortoiseGMManagerDB.favourites[i] == entry.id then table.remove(TortoiseGMManagerDB.favourites, i); return false end end
     table.insert(TortoiseGMManagerDB.favourites, entry.id); return true
 end
 function TortoiseGMManager.GetFavouriteCommands()
     TortoiseGMManager.InitializeDB(); local results, i = {}, nil
-    for i = 1, table.getn(TortoiseGMManagerDB.favourites) do local entry = TortoiseGMManager.FindEntry(TortoiseGMManagerDB.favourites[i]); if entry then table.insert(results, entry) end end
+    for i = 1, #TortoiseGMManagerDB.favourites do local entry = TortoiseGMManager.FindEntry(TortoiseGMManagerDB.favourites[i]); if entry then table.insert(results, entry) end end
     return results
 end
 
@@ -313,16 +320,16 @@ function TortoiseGMManager.GetFilteredCommands(category, query)
     local source = category == "favourites" and TortoiseGMManager.GetFavouriteCommands() or (TortoiseGMManager.commands or {})
     local q, ranked, results = lower(trim(query)), { {}, {}, {}, {}, {} }, {}
     local i, j
-    for i = 1, table.getn(source) do
+    for i = 1, #source do
         local entry = source[i]
         if category == "favourites" or category == "all" or entry.category == category then
             if q == "" then table.insert(results, entry) else
                 local label, command = lower(entry.label), lower(entry.command)
                 local details = lower((entry.id or "") .. " " .. (entry.hint or "") .. " " .. (entry.detail or "") .. " " .. (entry.lookupCommand or ""))
-                for j = 1, table.getn(entry.legacyCommands or {}) do details = details .. " " .. lower(entry.legacyCommands[j]) end
-                for j = 1, table.getn(entry.arguments or {}) do
+                for j = 1, #(entry.legacyCommands or {}) do details = details .. " " .. lower(entry.legacyCommands[j]) end
+                for j = 1, #(entry.arguments or {}) do
                     local argument = entry.arguments[j]; details = details .. " " .. lower(argument.label)
-                    local k; for k = 1, table.getn(argument.options or {}) do details = details .. " " .. lower(argument.options[k].label) end
+                    local k; for k = 1, #(argument.options or {}) do details = details .. " " .. lower(argument.options[k].label) end
                 end
                 local rank
                 if label == q then rank = 1 elseif string.sub(label, 1, string.len(q)) == q then rank = 2 elseif string.find(label, q, 1, true) then rank = 3 elseif string.find(command, q, 1, true) then rank = 4 elseif string.find(details, q, 1, true) then rank = 5 end
@@ -330,7 +337,7 @@ function TortoiseGMManager.GetFilteredCommands(category, query)
             end
         end
     end
-    if q ~= "" then for i = 1, 5 do for j = 1, table.getn(ranked[i]) do table.insert(results, ranked[i][j]) end end end
+    if q ~= "" then for i = 1, 5 do for j = 1, #ranked[i] do table.insert(results, ranked[i][j]) end end end
     return results
 end
 
@@ -351,6 +358,6 @@ function TortoiseGMManager.ExecuteLookup(entry, query)
         return true
     end
     TortoiseGMManager.AddHistory(lookup); if TortoiseGMManager.BeginLookup then TortoiseGMManager.BeginLookup(entry, query, lookup) end
-    SendChatMessage(lookup, "SAY"); return true
+    sendSay(lookup); return true
 end
 function TortoiseGMManager.Compose(entry, args) return TortoiseGMManager.NormalizeCommand((entry and entry.command or "") .. (trim(args) ~= "" and " " .. trim(args) or "")) end

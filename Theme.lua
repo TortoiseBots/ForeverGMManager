@@ -62,10 +62,17 @@ function Theme.SetTextColor(fontString, color)
 end
 
 function Theme.Fill(texture, color, alpha)
-    texture:SetTexture(color[1], color[2], color[3], alpha or color[4] or 1)
+    if texture.SetColorTexture then
+        texture:SetColorTexture(color[1], color[2], color[3], alpha or color[4] or 1)
+    else
+        texture:SetTexture(color[1], color[2], color[3], alpha or color[4] or 1)
+    end
 end
 
 function Theme.Backdrop(frame, background, border)
+    if BackdropTemplateMixin and not frame.SetBackdrop and Mixin then
+        Mixin(frame, BackdropTemplateMixin)
+    end
     frame:SetBackdrop(BACKDROP)
     Theme.Paint(frame, background or C.surface, border or C.border)
 end
@@ -180,9 +187,9 @@ function Theme.Window(frame, options)
 
     local close = Theme.IconButton(frame, 22, "X")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -11, -math.floor((headerHeight - 22) / 2) - 1)
-    close:SetScript("OnClick", function() this:GetParent():Hide() end)
-    close:SetScript("OnEnter", function() Theme.SetTextColor(this.text, C.red) end)
-    close:SetScript("OnLeave", function() Theme.PaintButton(this) end)
+    close:SetScript("OnClick", function(self) self:GetParent():Hide() end)
+    close:SetScript("OnEnter", function(self) Theme.SetTextColor(self.text, C.red) end)
+    close:SetScript("OnLeave", function(self) Theme.PaintButton(self) end)
 
     frame.headerIcon, frame.headerTitle, frame.headerSubtitle, frame.closeButton = icon, title, subtitle, close
     return frame
@@ -229,17 +236,17 @@ function Theme.PaintButton(button)
     if style.shadow == false then button.text:SetShadowOffset(0, 0) else button.text:SetShadowOffset(1, -1) end
     if button.icon then button.icon:SetAlpha(button.tgmmEnabled and 1 or 0.4) end
     local hover = style.hover or Theme.buttonVariants.secondary.hover
-    button.highlight:SetTexture(hover[1], hover[2], hover[3], hover[4])
+    Theme.Fill(button.highlight, hover)
     button.highlight:SetAlpha(button.tgmmEnabled and 1 or 0)
 end
 
 -- Flat button. Variants: primary, secondary, ghost, danger, info.
 -- Enable/Disable/SetText keep the stock Button API so callers stay unchanged.
 function Theme.Button(parent, label, variant, width, height, fontSize)
-    local button = CreateFrame("Button", nil, parent)
+    local button = CreateFrame("Button", nil, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     button:SetWidth(width or 80)
     button:SetHeight(height or 22)
-    button:SetBackdrop(BACKDROP)
+    Theme.Backdrop(button)
     button.variant = variant or "secondary"
     button.tgmmEnabled = true
 
@@ -264,11 +271,11 @@ function Theme.Button(parent, label, variant, width, height, fontSize)
     end
 
     -- Tactile press: nudge the label down while the mouse is held.
-    button:SetScript("OnMouseDown", function()
-        if this.tgmmEnabled then this.text:SetPoint("CENTER", this, "CENTER", this.textOffsetX or 0, -1) end
+    button:SetScript("OnMouseDown", function(self)
+        if self.tgmmEnabled then self.text:SetPoint("CENTER", self, "CENTER", self.textOffsetX or 0, -1) end
     end)
-    button:SetScript("OnMouseUp", function()
-        this.text:SetPoint("CENTER", this, "CENTER", this.textOffsetX or 0, 0)
+    button:SetScript("OnMouseUp", function(self)
+        self.text:SetPoint("CENTER", self, "CENTER", self.textOffsetX or 0, 0)
     end)
 
     Theme.PaintButton(button)
@@ -310,12 +317,12 @@ function Theme.Tab(parent, label, accent)
 
     tab.background = tab:CreateTexture(nil, "BACKGROUND")
     tab.background:SetAllPoints(tab)
-    tab.background:SetTexture(1, 1, 1, 0.045)
+    Theme.Fill(tab.background, { 1, 1, 1, 0.045 })
     tab.background:Hide()
 
     tab.highlight = tab:CreateTexture(nil, "HIGHLIGHT")
     tab.highlight:SetAllPoints(tab)
-    tab.highlight:SetTexture(1, 1, 1, 0.05)
+    Theme.Fill(tab.highlight, { 1, 1, 1, 0.05 })
 
     tab.underline = tab:CreateTexture(nil, "OVERLAY")
     tab.underline:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
@@ -340,8 +347,8 @@ function Theme.Tab(parent, label, accent)
             if self.icon then self.icon:SetAlpha(0.55); self.icon:SetVertexColor(0.75, 0.75, 0.75) end
         end
     end
-    tab:SetScript("OnEnter", function() if not this.selected then Theme.SetTextColor(this.text, C.text) end end)
-    tab:SetScript("OnLeave", function() this:SetSelected(this.selected) end)
+    tab:SetScript("OnEnter", function(self) if not self.selected then Theme.SetTextColor(self.text, C.text) end end)
+    tab:SetScript("OnLeave", function(self) self:SetSelected(self.selected) end)
     return tab
 end
 
@@ -365,7 +372,7 @@ end
 -- (monospace-like command font), justify, fontSize.
 function Theme.Input(parent, name, width, height, options)
     options = options or {}
-    local edit = CreateFrame("EditBox", name, parent)
+    local edit = CreateFrame("EditBox", name, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     edit:SetWidth(width or 120)
     edit:SetHeight(height or 24)
     edit:SetAutoFocus(false)
@@ -374,7 +381,7 @@ function Theme.Input(parent, name, width, height, options)
     edit:SetFont(options.code and Theme.CODE_FONT or Theme.FONT, options.fontSize or (options.code and 13 or 11), "")
     edit:SetTextColor(options.code and C.code[1] or C.text[1], options.code and C.code[2] or C.text[2], options.code and C.code[3] or C.text[3])
     if edit.SetJustifyH and options.justify then edit:SetJustifyH(options.justify) end
-    edit:SetBackdrop(BACKDROP)
+    Theme.Backdrop(edit, C.inset, C.border)
 
     local left = options.search and 24 or (options.prefix and 22 or 7)
     edit:SetTextInsets(left, options.rightInset or 7, 0, 0)
@@ -399,11 +406,11 @@ function Theme.Input(parent, name, width, height, options)
         edit.placeholder:SetText(options.placeholder)
     end
 
-    edit:SetScript("OnEscapePressed", function() this:ClearFocus() end)
-    edit:SetScript("OnEditFocusGained", function() this.tgmmFocused = true; Theme.RefreshInput(this) end)
-    edit:SetScript("OnEditFocusLost", function() this.tgmmFocused = false; Theme.RefreshInput(this) end)
-    edit:SetScript("OnEnter", function() this.tgmmHover = true; Theme.RefreshInput(this) end)
-    edit:SetScript("OnLeave", function() this.tgmmHover = false; Theme.RefreshInput(this) end)
+    edit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    edit:SetScript("OnEditFocusGained", function(self) self.tgmmFocused = true; Theme.RefreshInput(self) end)
+    edit:SetScript("OnEditFocusLost", function(self) self.tgmmFocused = false; Theme.RefreshInput(self) end)
+    edit:SetScript("OnEnter", function(self) self.tgmmHover = true; Theme.RefreshInput(self) end)
+    edit:SetScript("OnLeave", function(self) self.tgmmHover = false; Theme.RefreshInput(self) end)
     Theme.RefreshInput(edit)
     return edit
 end
@@ -412,9 +419,9 @@ end
 -- Used to keep placeholders in sync without touching the logic handlers.
 function Theme.HookScript(frame, scriptName, fn)
     local previous = frame:GetScript(scriptName)
-    frame:SetScript(scriptName, function()
-        if previous then previous() end
-        fn(frame)
+    frame:SetScript(scriptName, function(self, ...)
+        if previous then previous(self, ...) end
+        fn(self or frame, ...)
     end)
 end
 
@@ -429,9 +436,9 @@ end
 
 -- Small uppercase pill, e.g. DANGER or LOOKUP.
 function Theme.Badge(parent)
-    local badge = CreateFrame("Frame", nil, parent)
+    local badge = CreateFrame("Frame", nil, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     badge:SetHeight(14)
-    badge:SetBackdrop(BACKDROP)
+    Theme.Backdrop(badge)
     badge.text = Theme.Text(badge, 9, C.text, { justify = "CENTER" })
     badge.text:SetPoint("CENTER", badge, "CENTER", 0, 0)
     badge:Hide()
