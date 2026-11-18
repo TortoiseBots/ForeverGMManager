@@ -67,10 +67,27 @@ function TortoiseGMManager.InitializeDB()
     end
     if TortoiseGMManagerDB.minimapX == nil then TortoiseGMManagerDB.minimapX = 52 end
     if TortoiseGMManagerDB.minimapY == nil then TortoiseGMManagerDB.minimapY = 52 end
+    if TortoiseGMManagerDB.minimapHidden == nil then TortoiseGMManagerDB.minimapHidden = false end
     if TortoiseGMManagerDB.framePoint == nil then
         TortoiseGMManagerDB.framePoint, TortoiseGMManagerDB.frameRelativePoint = "CENTER", "CENTER"
         TortoiseGMManagerDB.frameX, TortoiseGMManagerDB.frameY = 0, 15
     end
+end
+
+function TortoiseGMManager.IsMinimapHidden()
+    TortoiseGMManager.InitializeDB()
+    return TortoiseGMManagerDB.minimapHidden == true
+end
+
+function TortoiseGMManager.SetMinimapHidden(hidden)
+    TortoiseGMManager.InitializeDB()
+    TortoiseGMManagerDB.minimapHidden = hidden == true
+    if TortoiseGMManager.RefreshMinimapButton then TortoiseGMManager.RefreshMinimapButton() end
+    return TortoiseGMManagerDB.minimapHidden
+end
+
+function TortoiseGMManager.ToggleMinimapButton()
+    return TortoiseGMManager.SetMinimapHidden(not TortoiseGMManager.IsMinimapHidden())
 end
 
 function TortoiseGMManager.NormalizeCommand(command)

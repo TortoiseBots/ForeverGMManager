@@ -110,9 +110,10 @@ Commands not present in the server registry are not advertised.
 ```text
 Click       open / close ForeverGMManager
 Shift-drag  move the minimap icon
+Right-click hide the minimap icon (run /fgmm minimap or /tgmm minimap to show it again)
 ```
 
-Window and minimap positions are saved automatically.
+Window and minimap positions (and visibility) are saved automatically.
 
 ## Basic workflow
 

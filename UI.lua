@@ -1027,7 +1027,7 @@ local function placeMinimapButton(dx, dy)
     return x, y
 end
 placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
-minimapButton:RegisterForClicks("LeftButtonUp"); minimapButton:RegisterForDrag("LeftButton")
+minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp"); minimapButton:RegisterForDrag("LeftButton")
 -- The logo carries its own gold ring, so it needs no stock tracking border; 24 px matches other buttons.
 -- A slightly larger gold disc behind it thickens the ring so it stands out against the map.
 local minimapBack = minimapButton:CreateTexture(nil, "BACKGROUND")
@@ -1041,10 +1041,15 @@ minimapIcon:SetTexture(BRAND_ICON)
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 TortoiseGMManager.minimapButton = minimapButton
 
+function TortoiseGMManager.RefreshMinimapButton()
+    if TortoiseGMManager.IsMinimapHidden() then minimapButton:Hide() else minimapButton:Show() end
+end
+
 local function restoreSavedPositions()
     main:ClearAllPoints()
     main:SetPoint(TortoiseGMManagerDB.framePoint or "CENTER", UIParent, TortoiseGMManagerDB.frameRelativePoint or "CENTER", TortoiseGMManagerDB.frameX or 0, TortoiseGMManagerDB.frameY or 15)
     placeMinimapButton(TortoiseGMManagerDB.minimapX or 52, TortoiseGMManagerDB.minimapY or 52)
+    TortoiseGMManager.RefreshMinimapButton()
 end
 
 local function updateMinimapButtonPosition()
@@ -1065,20 +1070,32 @@ minimapButton:SetScript("OnDragStop", function(self)
     if not TortoiseGMManager.minimapDragging then return end
     TortoiseGMManager.minimapDragging = false; self:SetScript("OnUpdate", nil); updateMinimapButtonPosition()
 end)
-minimapButton:SetScript("OnClick", function()
+minimapButton:SetScript("OnClick", function(self, button)
     if TortoiseGMManager.minimapWasDragged then TortoiseGMManager.minimapWasDragged = false; return end
+    if button == "RightButton" then
+        TortoiseGMManager.SetMinimapHidden(true)
+        GameTooltip:Hide()
+        TortoiseGMManager.Print("Minimap button hidden. Type /fgmm minimap to show it again.")
+        return
+    end
     TortoiseGMManager.ToggleUI()
 end)
 minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("ForeverGMManager", COLORS.gold[1], COLORS.gold[2], COLORS.gold[3])
-    GameTooltip:AddLine("Click: open / close", 1, 1, 1); GameTooltip:AddLine("Shift-drag: move around minimap", 0.75, 0.75, 0.75); GameTooltip:Show()
+    GameTooltip:AddLine("Click: open / close", 1, 1, 1); GameTooltip:AddLine("Shift-drag: move around minimap", 0.75, 0.75, 0.75); GameTooltip:AddLine("Right-click: hide minimap button", 0.75, 0.75, 0.75); GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 SLASH_TORTOISEGMMANAGER1 = "/fgmm"
 SLASH_TORTOISEGMMANAGER2 = "/tgmm"
 SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
-    msg = trim(msg); TortoiseGMManager.ShowUI()
+    msg = trim(msg)
+    if string.lower(msg) == "minimap" then
+        local hidden = TortoiseGMManager.ToggleMinimapButton()
+        TortoiseGMManager.Print(hidden and "Minimap button hidden. Type /fgmm minimap to show it again." or "Minimap button shown.")
+        return
+    end
+    TortoiseGMManager.ShowUI()
     if msg ~= "" then
         TortoiseGMManager.selectedEntry = nil; TortoiseGMManager.structuredValues = nil
         TortoiseGMManager.RefreshArgumentControls(); lookupButton:Disable(); commandBox:SetText(TortoiseGMManager.NormalizeCommand(msg))

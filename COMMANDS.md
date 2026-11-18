@@ -83,6 +83,12 @@
 | Set mana | `.modify mana` | Moderator | Set mana on the selected player or self. |  |
 | Money | `.modify money` | Moderator | Add or remove copper on the selected player or self (10000 = 1g). |  |
 | Scale | `.modify scale` | Moderator | Change scale of the selected unit or self. |  |
+| Set energy | `.modify energy` | Moderator | Set energy on the selected player or self. |  |
+| Set rage | `.modify rage` | Moderator | Set rage on the selected player or self. |  |
+| Set honor | `.modify honor` | Moderator | Add honor points to the selected player or self. |  |
+| Drunk level | `.modify drunk` | Moderator | Set drunkenness level (0..100, 0 = sober) on selected player or self. |  |
+| Set phase | `.modify phase` | Administrator | Set phase ID on the selected unit or self. |  |
+| Talent points | `.modify talentpoints` | Moderator | Set unspent talent points (disabled in Classic 1.60; use Rate.Talent in config). |  |
 | Set reputation | `.modify reputation` | GM | Set reputation with a faction on the selected player. Use FIND to resolve a faction name. |  |
 | Add item | `.additem` | Administrator | Add item(s) to selected player or self. Use FIND to search items by name. |  |
 | Add item set | `.additem set` | Administrator | Add every item in an item set to selected player or self. Use FIND to resolve a set name. |  |
@@ -124,6 +130,11 @@
 | Reset talents | `.reset talents` | Administrator | Reset talents for the selected or named player. | yes |
 | Reset spells | `.reset spells` | Administrator | Remove all non-original spells from spellbook. | yes |
 | Reset level | `.reset level` | Administrator | Reset character level to 1 (also resets stats and talents). | yes |
+| Pet create | `.pet create` | GM | Turn the selected beast into your hunter pet. |  |
+| Pet learn spell | `.pet learn` | GM | Teach a spell to your or the selected player's active pet. Use FIND to resolve a spell name. |  |
+| Pet unlearn spell | `.pet unlearn` | GM | Unlearn a spell from your or the selected player's active pet. Use FIND to resolve a spell name. |  |
+| Possess | `.possess` | Administrator | Possess the selected unit. |  |
+| Unpossess | `.unpossess` | Administrator | Release possession of the selected unit. |  |
 
 ## World
 
@@ -134,6 +145,10 @@
 | Add NPC | `.npc add` | GM | Create a persistent creature spawn at your position. Use FIND to search creatures by name. | yes |
 | Spawn temp NPC | `.npc add temp` | GM | Spawn a temporary (non-DB) creature at your position. Use FIND to search creatures by name. |  |
 | Move NPC | `.npc move` | GM | Move the selected or specified creature spawn to your position. | yes |
+| NPC stop follow | `.npc follow stop` | GM | Stop the selected creature from following you. |  |
+| NPC set faction | `.npc set factionid` | GM | Change faction template of the selected creature. Use FIND to resolve a faction name. | yes |
+| NPC set model | `.npc set model` | GM | Change display model ID of the selected creature. | yes |
+| NPC set movetype | `.npc set movetype` | GM | Set movement type on the selected creature. | yes |
 | NPC say | `.npc say` | Moderator | Make the selected creature say text. |  |
 | NPC yell | `.npc yell` | Moderator | Make the selected creature yell text. |  |
 | NPC emote | `.npc playemote` | Administrator | Play an emote on the selected creature. |  |
@@ -155,6 +170,8 @@
 | Object info | `.gobject info` | GM | Query gameobject information by entry or guid. |  |
 | Target gameobject | `.gobject target` | GM | Find the nearest gameobject. |  |
 | Activate object | `.gobject activate` | GM | Activate a gameobject (door, chest, button, etc.). |  |
+| Move gameobject | `.gobject move` | GM | Move a persistent gameobject spawn to your position or given XYZ. | yes |
+| Turn gameobject | `.gobject turn` | GM | Rotate a persistent gameobject spawn to your facing or given angles. | yes |
 | Delete gameobject | `.gobject delete` | GM | Delete a persistent gameobject spawn. | yes |
 | Instance binds | `.instance listbinds` | Moderator | List instance binds for the selected player or self. |  |
 | Unbind instances | `.instance unbind` | Moderator | Unbind instances for the selected player or self. | yes |
@@ -187,10 +204,15 @@
 | --- | --- | --- | --- | --- |
 | Online GMs | `.gm ingame` | Moderator | List GMs currently in game. |  |
 | Full GM list | `.gm list` | Administrator | List all GM accounts and security levels. |  |
+| Account info | `.account` | Player | Show your account security level and password settings. |  |
+| Online accounts | `.account onlinelist` | Console | List currently online accounts and characters. |  |
 | Commands | `.commands` | Player | List commands available to your account. |  |
+| Help: server | `.help server` | Player | Show available .server subcommands in chat. |  |
 | Server info | `.server info` | Administrator | Display server version and connected player count. |  |
 | Server MOTD | `.server motd` | Administrator | Show the server Message of the Day. |  |
+| Set log level | `.server set loglevel` | Console | Set server logger or appender verbosity (e.g. l network 1). |  |
 | Save all | `.saveall` | Moderator | Save all online characters. |  |
+| Reload table | `.reload` | Administrator | Reload a world DB table by name (e.g. smart_scripts). | yes |
 | Reload config | `.reload config` | Administrator | Reload worldserver.conf settings. | yes |
 | Reload all | `.reload all` | Administrator | Reload all safe-reloadable world tables. | yes |
 | Reload teleports | `.reload game_tele` | Administrator | Reload the game_tele table. | yes |
@@ -205,6 +227,9 @@
 | Unmute | `.unmute` | Moderator | Remove a chat mute. | yes |
 | Ban info: account | `.baninfo account` | Administrator | Show ban details for an account. |  |
 | Ban info: character | `.baninfo character` | Administrator | Show ban details for a character. |  |
+| Ban list: character | `.banlist character` | Administrator | List active character bans matching a name filter. |  |
+| Guild create | `.guild create` | Administrator | Create a guild with the selected or named leader and quoted guild name. | yes |
+| Guild invite | `.guild invite` | Administrator | Invite the selected or named player into a guild. |  |
 | Ban character | `.ban character` | Administrator | Ban a character (duration e.g. 4d20h or -1 for permanent). | yes |
 | Ban account | `.ban account` | Administrator | Ban an account (duration e.g. 4d20h or -1 for permanent). | yes |
 | Ban IP | `.ban ip` | Administrator | Ban an IP address. | yes |
