@@ -67,7 +67,7 @@ local addItemEntry = {
 expectTrue(TortoiseGM.BeginLookup(addItemEntry, "thunder", ".lookup item thunder"), "starts item lookup")
 expectEqual(TortoiseGM.GetLookupKind(".lookup item thunder"), "item", "detects item lookup kind")
 
-local itemMessage = "19019 - |cffa335ee|Hitem:19019:0:0:0:0:0:0:0|h[Thunderfury, Blessed Blade of the Windseeker]|h|r"
+local itemMessage = "19019 - |cffffffff|Hitem:19019:0:0:0:0:0:0:0:0|h[Thunderfury, Blessed Blade of the Windseeker]|h|r "
 expectEqual(TortoiseGM.CaptureLookupMessage(itemMessage), 1, "captures item hyperlink result")
 expectEqual(table.getn(TortoiseGM.GetLookupResults()), 1, "stores one item result")
 expectEqual(TortoiseGM.GetLookupResults()[1].id, "19019", "keeps item id")
@@ -93,10 +93,10 @@ expectEqual(TortoiseGM.CaptureLookupMessage(foreignSpell), 0, "ignores foreign l
 
 expectTrue(TortoiseGM.BeginLookupCommand(".lookup creature wolf"), "starts manual creature lookup")
 expectEqual(TortoiseGM.pendingLookup.id, 2, "replacement lookup gets a new session number")
-local creatureMessage = "123 - |cffffffff|Hcreature_entry:123|h[Forest Wolf]|h|r"
+local creatureMessage = "123 - |cffffffff|Hcreature_entry:123|h[Forest Wolf]|h|r "
 expectEqual(TortoiseGM.CaptureLookupMessage(creatureMessage), 1, "captures creature result")
 expectEqual(TortoiseGM.GetLookupResults()[1].kind, "creature", "maps creature hyperlink kind")
-expectEqual(TortoiseGM.GetLookupResultCommand(TortoiseGM.GetLookupResults()[1]), ".go creature 123", "standalone creature lookup uses safe default action")
+expectEqual(TortoiseGM.GetLookupResultCommand(TortoiseGM.GetLookupResults()[1]), ".go creature id 123", "standalone creature lookup uses safe default action")
 local creatureAction = TortoiseGM.GetLookupActionDescriptor(TortoiseGM.GetLookupResults()[1])
 expectEqual(creatureAction.kind, "action", "standalone creature result is actionable")
 
@@ -107,32 +107,41 @@ expectEqual(TortoiseGM.GetLookupResults()[1].kind, "event", "maps gameevent hype
 expectEqual(TortoiseGM.GetLookupResultCommand(TortoiseGM.GetLookupResults()[1]), nil, "manual event result remains informational")
 
 expectTrue(TortoiseGM.BeginLookupCommand(".lookup item wingblade"), "starts standalone item lookup")
-expectEqual(TortoiseGM.CaptureLookupMessage("6504 - |cffffffff|Hitem:6504:0:0:0:0:0:0:0|h[Wingblade]|h|r"), 1, "captures standalone item")
+expectEqual(TortoiseGM.CaptureLookupMessage("6504 - |cffffffff|Hitem:6504:0:0:0:0:0:0:0:0|h[Wingblade]|h|r "), 1, "captures standalone item")
 local standaloneItemAction = TortoiseGM.GetLookupActionDescriptor(TortoiseGM.GetLookupResults()[1], { count = "20" })
 expectEqual(standaloneItemAction.kind, "action", "standalone item result offers add action")
 expectEqual(standaloneItemAction.label, "ADD ITEM", "standalone item action is clearly labelled")
 expectEqual(standaloneItemAction.command, ".additem 6504 20", "standalone item action preserves editable quantity")
 
 local dangerousEntry = {
-    label = "Delete item", command = ".deleteitem", lookupCommand = ".lookup item", danger = true,
+    label = "Quest remove", command = ".quest remove", lookupCommand = ".lookup quest", danger = true,
     arguments = {
-        { key = "itemId", label = "Item ID", type = "lookup-id", required = true },
-        { key = "count", label = "Count", type = "number", required = true, default = 1, min = 1, max = 1000, integer = true },
+        { key = "questId", label = "Quest ID", type = "lookup-id", required = true },
     },
 }
-expectTrue(TortoiseGM.BeginLookup(dangerousEntry, "thunder", ".lookup item thunder"), "starts dangerous source lookup")
-expectEqual(TortoiseGM.CaptureLookupMessage(itemMessage), 1, "captures dangerous source result")
+expectTrue(TortoiseGM.BeginLookup(dangerousEntry, "thunder", ".lookup quest thunder"), "starts dangerous source lookup")
+expectEqual(TortoiseGM.CaptureLookupMessage("19019 - |cffffffff|Hquest:19019:60:0:0:0|h[Thunderfury]|h|r "), 1, "captures dangerous source result")
 local dangerousAction = TortoiseGM.GetLookupActionDescriptor(TortoiseGM.GetLookupResults()[1])
 expectTrue(dangerousAction.dangerous, "dangerous source remains guarded in descriptor")
 
-expectTrue(TortoiseGM.BeginLookupCommand(".lookup player name arth"), "recognizes nested player lookup")
-expectEqual(TortoiseGM.GetLookupKind(".lookup player name arth"), "player", "uses longest nested lookup command")
+expectTrue(TortoiseGM.BeginLookupCommand(".lookup tele storm"), "starts tele lookup")
+expectEqual(TortoiseGM.GetLookupKind(".lookup tele storm"), "tele", "detects tele lookup kind")
+local teleMessage = "The following locations were found:\n  |cffffffff|Htele:123|h[Stormwind]|h|r\n  |cffffffff|Htele:124|h[StormwindHarbor]|h|r\n"
+expectEqual(TortoiseGM.CaptureLookupMessage(teleMessage), 2, "captures multi-line tele hyperlinks")
+expectEqual(TortoiseGM.GetLookupResults()[1].name, "Stormwind", "keeps tele location name")
+
+expectTrue(TortoiseGM.BeginLookupCommand(".lookup player account arth"), "recognizes nested player lookup")
+expectEqual(TortoiseGM.GetLookupKind(".lookup player account arth"), "player", "uses longest nested lookup command")
+expectEqual(TortoiseGM.CaptureLookupMessage("  Arthas (Player-0-00000001)  [online]"), 1, "captures player character line")
 
 expectTrue(TortoiseGM.BeginLookupCommand(".lookup item absent"), "starts lookup for no-results check")
-expectEqual(TortoiseGM.CaptureLookupMessage("No results found."), 0, "no-results summary is not parsed as a result")
+expectEqual(TortoiseGM.CaptureLookupMessage("No items found!"), 0, "trinity no-items summary is not parsed as a result")
 expectEqual(TortoiseGM.lastLookupSession.state, "noresults", "explicit no-results feedback ends the session")
+expectTrue(TortoiseGM.BeginLookupCommand(".lookup tele absent"), "starts tele lookup for no-results check")
+expectEqual(TortoiseGM.CaptureLookupMessage("There are no teleport locations matching your request."), 0, "trinity no-tele summary ends session")
+expectEqual(TortoiseGM.lastLookupSession.state, "noresults", "tele no-results feedback ends the session")
 expectTrue(TortoiseGM.BeginLookupCommand(".lookup item expired"), "starts lookup for expiry check")
-expectEqual(TortoiseGM.CaptureLookupMessage("12 results found"), 0, "generic parser rejects summary lines")
+expectEqual(TortoiseGM.CaptureLookupMessage("Result limit reached (max results: 50)"), 0, "generic parser rejects max-results line")
 TortoiseGM.DismissLookupResults()
 expectTrue(TortoiseGM.lookupResultsDismissed, "explicit dismissal is tracked")
 now = 113

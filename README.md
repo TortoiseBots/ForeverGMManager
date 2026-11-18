@@ -64,33 +64,30 @@ Examples:
 ```text
 item       -> .additem <id>
 spell      -> .cast <id>
-quest      -> .quest status <id>
 creature   -> .go creature id <id>
-gameobject -> .go object id <id>
-event      -> .event info <id>
-itemset    -> .additemset <id>
+gameobject -> .go gameobject id <id>
+skill      -> .setskill <id>
 ```
 
-When SEARCH is launched from a specific action such as **Quest add**, **NPC add**, **Delete item**, **Add item set**, **Cast**, or **Set skill**, the selected result is loaded back into that original action instead.
+When SEARCH is launched from a specific action such as **Quest add**, **NPC add**, **Add item set**, **Cast**, or **Set skill**, the selected result is loaded back into that original action instead.
 
 The parser listens to `CHAT_MSG_SYSTEM`; it does not monkey-patch chat-frame `AddMessage` methods and does not suppress the original server response.
 
 ## Command coverage
 
-The catalogue is checked against the command registry in the Shyalya `playerbots-integration-gh` branch built by `TortoiseWoWServer` by default.
+The catalogue is checked against the local TrinityCore (`forever-bots`) command tables (`ChatCommandTable`) and RBAC default permissions.
 
-Current development coverage is **150 presets** with **21 SEARCH mappings**, including common teleport and race-morph shortcuts plus the deployed core's NPC movement-type actions.
+Current development coverage is **183 presets** with **26 SEARCH mappings**, including standard and Forever-custom teleport shortcuts (`game_tele`), race-morph shortcuts, cheat toggles, mail/send commands, and character reset/customization utilities.
 
-- GM mode, visibility, god mode, GPS, revive, replenish, repair, bank, mailbox and combat utilities.
-- Saved teleports, player teleport/summon, coordinate movement, hover, waterwalk and taxi utilities.
-- Items, item sets, spells, auras, cooldowns, skills, morph/demorph and level changes.
-- NPC and gameobject lookup, spawn, movement, targeting and deletion workflows.
-- Quest and event management.
-- Item, spell, quest, creature, object, faction, skill, item-set, event and player/account lookups.
-- Save/reload/server information and moderation commands.
-- Shyalya commands such as `.learn all_myspells`, `.learn all_recipes`, `.learn all_trainer` and `.learn all_items`.
+- GM mode, visibility, chat badge, cheats (god, casttime, cooldown, power, waterwalk, taxi, explore), GPS, revive, repair, bank, mailbox, unstuck and time utilities.
+- Saved teleports (`.lookup tele` + `game_tele` shortcuts including Forever custom zones), player teleport/summon, coordinate/offset movement and fly mode.
+- Items, item sets, spells, auras, cooldowns, skills, reputation, morph/demorph, mail/send and level/character/reset utilities.
+- NPC and gameobject lookup, spawn (persistent and temporary), movement, targeting, activation and deletion workflows.
+- Quest, instance bind and game event management.
+- Item, item-set, spell, quest, creature, object, tele, faction, skill, event, area, map, taxinode, title and player/account lookups.
+- Save/reload/server information, announcements and moderation commands.
 
-Commands not present in the current Shyalya registry are intentionally not advertised.
+Commands not present in the Forever server registry are intentionally not advertised.
 
 ## Installation
 
@@ -158,23 +155,16 @@ Explicit cancellation commands such as `.server restart cancel` remain immediate
 
 ## Server alignment
 
-The addon is currently aligned against:
-
-- `tortoise-wow-stack/TortoiseWoWServer`
-- `Shyalya/tortoise-wow` on `playerbots-integration-gh`
-- Command catalogue compatibility validated against server source commit `a6510bc4d8ecc48eac2a1d9a3a8b0610924d12fc`
-- the `Penqle/tortoise-wow` lineage
-- `tortoise-wow-stack/TortoiseWoWKnowledgeBase`
-
-Relevant server command definitions live primarily in:
+The addon catalogue is aligned against the local WoW Forever TrinityCore (`forever-bots`) server source and RBAC defaults:
 
 ```text
-src/game/Chat/Chat.cpp
-src/game/Commands/Commands.cpp
-src/game/ObjectMgr.cpp
+src/server/scripts/Commands/cs_*.cpp
+src/server/scripts/Custom/Classic/world/classic_*_commands.cpp
+src/server/game/Accounts/RBAC.h
+sql/base/auth_database.sql
 ```
 
-`tests/verify_server_catalog.py` reconstructs the nested server command table and verifies addon presets, SEARCH routes, and displayed access levels against the configured source.
+`tests/verify_server_catalog.py` reconstructs the nested server `ChatCommandTable` registry and RBAC security levels, verifying addon presets, SEARCH routes, and displayed access levels against the local server source.
 
 ## Project structure
 
