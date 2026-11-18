@@ -1,16 +1,11 @@
--- Lightweight behavior tests for the public TortoiseGM core interface.
--- Run with: npx --yes fengari-node-cli tests/core_spec.lua
-
-if not table.getn then
-    table.getn = function(value)
-        return #value
-    end
-end
+-- Lightweight behavior tests for the public ForeverGMManager core interface.
+-- Run with: lua5.1 tests/core_spec.lua
 
 TortoiseGMManager = nil
 TortoiseGMManagerDB = nil
 
 local sent = {}
+local chatSent = {}
 local now = 100
 
 function GetTime()
@@ -20,6 +15,12 @@ end
 function SendChatMessage(message, channel)
     table.insert(sent, { message = message, channel = channel })
 end
+
+C_ChatInfo = {
+    SendChatMessage = function(message, channel)
+        table.insert(chatSent, { message = message, channel = channel })
+    end,
+}
 
 DEFAULT_CHAT_FRAME = nil
 
@@ -71,7 +72,7 @@ expectFalse(TortoiseGM.IsDangerous(".tele name Player Stormwind"), "player telep
 
 -- Every catalogue entry explicitly marked danger must participate in the core confirmation guard.
 local dangerIndex
-for dangerIndex = 1, table.getn(TortoiseGM.commands) do
+for dangerIndex = 1, #TortoiseGM.commands do
     local dangerEntry = TortoiseGM.commands[dangerIndex]
     if dangerEntry.danger then
         expectTrue(TortoiseGM.IsDangerous(dangerEntry.command), "danger preset is guarded: " .. dangerEntry.command)
@@ -89,28 +90,37 @@ expectEqual(TortoiseGM.GetComposerArgs(lookupEntry, ".ADDITEM Thunderfury"), "Th
 expectEqual(TortoiseGM.GetComposerArgs(lookupEntry, ".cast Fireball"), ".cast Fireball", "unrelated composer text is preserved")
 
 -- Positive FIND path sends the lookup only, preserving the action for the UI.
-local sentBeforeLookup = table.getn(sent)
+local sentBeforeLookup = #chatSent
 expectTrue(TortoiseGM.ExecuteLookup(lookupEntry, "Thunderfury"), "explicit lookup executes")
-expectEqual(table.getn(sent), sentBeforeLookup + 1, "matching lookup sends one chat command")
-expectEqual(sent[table.getn(sent)].message, ".lookup item Thunderfury", "matching lookup sends expected command")
-expectEqual(sent[table.getn(sent)].channel, "SAY", "lookup uses chat command channel")
+expectEqual(#chatSent, sentBeforeLookup + 1, "matching lookup sends one chat command via C_ChatInfo")
+expectEqual(chatSent[#chatSent].message, ".lookup item Thunderfury", "matching lookup sends expected command")
+expectEqual(chatSent[#chatSent].channel, "SAY", "lookup uses chat command channel")
 
 -- Help strips user arguments and targets the known catalogue route.
-local sentBeforeHelp = table.getn(sent)
+local sentBeforeHelp = #chatSent
 expectTrue(TortoiseGM.RequestHelp(".server restart 10"), "help request accepts composed command")
-expectEqual(sent[table.getn(sent)].message, ".help server restart", "help strips user arguments")
-expectEqual(table.getn(sent), sentBeforeHelp + 1, "help sends once")
+expectEqual(chatSent[#chatSent].message, ".help server restart", "help strips user arguments")
+expectEqual(#chatSent, sentBeforeHelp + 1, "help sends once")
 
 -- Dangerous execution is two-step; explicit lifecycle cancel is immediate.
-local sentBeforeDanger = table.getn(sent)
+local sentBeforeDanger = #chatSent
 expectFalse(TortoiseGM.Execute(".server restart 10"), "first dangerous RUN only arms")
-expectEqual(table.getn(sent), sentBeforeDanger, "armed dangerous command sends nothing")
+expectEqual(#chatSent, sentBeforeDanger, "armed dangerous command sends nothing")
 expectTrue(TortoiseGM.Execute(".server restart 10"), "second identical dangerous RUN executes")
-expectEqual(sent[table.getn(sent)].message, ".server restart 10", "confirmed dangerous command is sent")
+expectEqual(chatSent[#chatSent].message, ".server restart 10", "confirmed dangerous command is sent")
 
-local sentBeforeCancel = table.getn(sent)
+local sentBeforeCancel = #chatSent
 expectTrue(TortoiseGM.Execute(".server restart cancel"), "restart cancel executes immediately")
-expectEqual(table.getn(sent), sentBeforeCancel + 1, "restart cancel sends once")
+expectEqual(#chatSent, sentBeforeCancel + 1, "restart cancel sends once")
+
+-- Fallback to global SendChatMessage when C_ChatInfo is absent.
+local savedChatInfo = C_ChatInfo
+C_ChatInfo = nil
+local legacyBefore = #sent
+expectTrue(TortoiseGM.Execute(".gps"), "fallback SendChatMessage executes when C_ChatInfo is absent")
+expectEqual(#sent, legacyBefore + 1, "fallback sends once via SendChatMessage")
+expectEqual(sent[#sent].message, ".gps", "fallback sends expected command")
+C_ChatInfo = savedChatInfo
 
 -- History deduplicates and keeps most-recent-first ordering.
 TortoiseGM.AddHistory(".gps")
@@ -123,7 +133,7 @@ expectEqual(TortoiseGMDB.history[2], ".server info", "history retains other rece
 local favouriteEntry = TortoiseGM.commands[1]
 expectTrue(TortoiseGM.ToggleFavourite(favouriteEntry), "favourite can be added")
 expectTrue(TortoiseGM.IsFavourite(favouriteEntry.command), "added command is favourite")
-expectEqual(table.getn(TortoiseGM.GetFavouriteCommands()), 1, "favourites view returns added command")
+expectEqual(#TortoiseGM.GetFavouriteCommands(), 1, "favourites view returns added command")
 expectFalse(TortoiseGM.ToggleFavourite(favouriteEntry), "favourite can be removed")
 expectFalse(TortoiseGM.IsFavourite(favouriteEntry.command), "removed command is not favourite")
 
@@ -193,12 +203,12 @@ TortoiseGMManagerDB.favourites = { ".gm on", ".hover 0", ".not-a-command" }
 TortoiseGM.MigrateFavourites()
 expectEqual(TortoiseGMManagerDB.favourites[1], "gm-mode", "legacy GM favourite migrates")
 expectEqual(TortoiseGMManagerDB.favourites[2], "gm-fly", "merged alias favourite migrates")
-expectEqual(table.getn(TortoiseGMManagerDB.favourites), 2, "unresolvable favourite is omitted")
+expectEqual(#TortoiseGMManagerDB.favourites, 2, "unresolvable favourite is omitted")
 TortoiseGM.MigrateFavourites()
-expectEqual(table.getn(TortoiseGMManagerDB.favourites), 2, "favourite migration is idempotent")
-expectTrue(table.getn(TortoiseGM.GetFilteredCommands("all", ".gm off")) > 0, "search includes merged legacy command")
-expectTrue(table.getn(TortoiseGM.GetFilteredCommands("all", "OFF")) > 0, "search includes option labels")
-expectTrue(table.getn(TortoiseGM.GetFilteredCommands("all", "item id")) > 0, "search includes argument labels")
+expectEqual(#TortoiseGMManagerDB.favourites, 2, "favourite migration is idempotent")
+expectTrue(#TortoiseGM.GetFilteredCommands("all", ".gm off") > 0, "search includes merged legacy command")
+expectTrue(#TortoiseGM.GetFilteredCommands("all", "OFF") > 0, "search includes option labels")
+expectTrue(#TortoiseGM.GetFilteredCommands("all", "item id") > 0, "search includes argument labels")
 
 -- Every hinted command receives a helpful fallback input when no richer schema exists.
 local teleEntry = TortoiseGM.FindEntry("tele")
@@ -207,7 +217,7 @@ teleValues.location = "ThunderBluff"
 expectEqual(TortoiseGM.ComposeValues(teleEntry, teleValues), ".tele ThunderBluff", "tele location input composes exact command")
 local summonEntry = TortoiseGM.FindEntry("summon")
 local summonArguments = TortoiseGM.GetEntryArguments(summonEntry)
-expectEqual(table.getn(summonArguments), 1, "hinted command receives one fallback input")
+expectEqual(#summonArguments, 1, "hinted command receives one fallback input")
 expectEqual(summonArguments[1].key, "arguments", "fallback input stores raw syntax arguments")
 local summonValues = TortoiseGM.InitializeValues(summonEntry)
 summonValues.arguments = "Testplayer"

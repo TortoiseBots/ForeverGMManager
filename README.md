@@ -22,7 +22,7 @@ The addon is **client-side only**. It does not connect directly to MariaDB and d
 
 - Compact structured command palette sized for common 1024x768 Vanilla layouts.
 - Draggable minimap launcher; **Shift-drag** moves it and the position is saved.
-- `/tgmm` opens the manager.
+- `/fgmm` opens the manager (`/tgmm` is kept as an alias).
 - Fav, All, Travel, Player, World, Lookup, Admin and Danger categories. Fav opens by default when populated; otherwise All opens.
 - **Filter actions** searches the catalogue with label-first ranking; it never changes the executable command.
 - Uses stock interface icons and textures provided by the installed Vanilla WoW client; no game texture files are bundled, and no Ace or LibDBIcon dependency is required.
@@ -103,20 +103,20 @@ The addon files live at the repository root, so the downloaded folder **is** the
 <WoW>/Interface/AddOns/
 ```
 
-WoW loads any folder that contains a `.toc` file, so the folder name does not need to match; you can keep `TortoiseGMManager-main` as-is or rename it to `TortoiseGMManager` if you prefer.
+WoW loads any folder that contains a `.toc` file matching its name, so rename the extracted folder to `ForeverGMManager`:
 
 ```text
-<WoW>/Interface/AddOns/TortoiseGMManager/TortoiseGMManager.toc
+<WoW>/Interface/AddOns/ForeverGMManager/ForeverGMManager.toc
 ```
 
-4. Start or restart the WoW client.
-5. On the character-selection screen, open **AddOns** and enable **TortoiseGMManager**.
-6. If the client marks it as outdated, enable **Load out of date AddOns**. The manifest targets Vanilla interface `11200`.
+4. Start or restart the WoW Forever client.
+5. On the character-selection screen, open **AddOns** and enable **ForeverGMManager**.
+6. If the client marks it as outdated, enable **Load out of date AddOns**. The manifest targets WoW Forever interface `16001`.
 7. Log into a GM character.
 8. Click the hammer icon next to the minimap, or run:
 
 ```text
-/tgmm
+/fgmm
 ```
 
 ### Minimap controls

@@ -75,7 +75,7 @@ end
 
 local function getSingleToggle(entry)
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
-    if arguments and table.getn(arguments) == 1 and arguments[1].type == "toggle" then return arguments[1] end
+    if arguments and #arguments == 1 and arguments[1].type == "toggle" then return arguments[1] end
     return nil
 end
 
@@ -108,7 +108,7 @@ local function showTooltip(owner, anchor, title, lines)
     GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
     GameTooltip:SetText(title or "", COLORS.gold[1], COLORS.gold[2], COLORS.gold[3])
     local i
-    for i = 1, table.getn(lines or {}) do
+    for i = 1, #(lines or {}) do
         local line = lines[i]
         if line and line[1] and line[1] ~= "" then GameTooltip:AddLine(line[1], line[2] or 1, line[3] or 1, line[4] or 1, true) end
     end
@@ -119,7 +119,7 @@ end
 -- Window
 ---------------------------------------------------------------------------
 
-local main = CreateFrame("Frame", "TortoiseGMManagerFrame", UIParent)
+local main = CreateFrame("Frame", "TortoiseGMManagerFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 main:SetWidth(PANEL_WIDTH)
 main:SetHeight(PANEL_HEIGHT)
 main:SetPoint(TortoiseGMManagerDB.framePoint or "CENTER", UIParent, TortoiseGMManagerDB.frameRelativePoint or "CENTER", TortoiseGMManagerDB.frameX or 0, TortoiseGMManagerDB.frameY or 15)
@@ -128,8 +128,8 @@ main:SetMovable(true)
 main:EnableMouse(true)
 main:EnableMouseWheel(true)
 main:RegisterForDrag("LeftButton")
-main:SetScript("OnDragStart", function() this:StartMoving() end)
-main:SetScript("OnDragStop", function() this:StopMovingOrSizing(); saveMainPosition(this) end)
+main:SetScript("OnDragStart", function(self) self:StartMoving() end)
+main:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); saveMainPosition(self) end)
 -- Same brand pattern as TortoiseBotsManager: two-tone name + version, and a
 -- meta line underneath. The "ban hammer" (Sulfuras) marks the GM tool.
 local BRAND_ICON = "Interface\\Icons\\INV_Hammer_Unique_Sulfuras"
@@ -145,7 +145,7 @@ TortoiseGMManager.frame = main
 if UISpecialFrames then table.insert(UISpecialFrames, "TortoiseGMManagerFrame") end
 
 -- Target indicator: a pill with a live dot, right-aligned next to close.
-local targetPill = CreateFrame("Frame", nil, main)
+local targetPill = CreateFrame("Frame", nil, main, BackdropTemplateMixin and "BackdropTemplate" or nil)
 targetPill:SetHeight(22)
 targetPill:SetPoint("RIGHT", main.closeButton, "LEFT", -8, 0)
 Theme.Backdrop(targetPill, COLORS.inset, COLORS.border)
@@ -166,18 +166,18 @@ local searchBox = Theme.Input(main, "TortoiseGMManagerSearchBox", CONTENT_WIDTH,
     rightInset = 30,
 })
 searchBox:SetPoint("TOPLEFT", main, "TOPLEFT", PAD, SEARCH_TOP)
-searchBox:SetScript("OnEnterPressed", function() this:ClearFocus() end)
+searchBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 TortoiseGMManager.searchBox = searchBox
 
 local clearSearch = Theme.IconButton(searchBox, 20, "X")
 clearSearch:SetPoint("RIGHT", searchBox, "RIGHT", -3, 0)
 clearSearch:SetScript("OnClick", function() searchBox:SetText(""); searchBox:ClearFocus() end)
-clearSearch:SetScript("OnEnter", function() showTooltip(this, "ANCHOR_TOP", "Clear filter") end)
+clearSearch:SetScript("OnEnter", function(self) showTooltip(self, "ANCHOR_TOP", "Clear filter") end)
 clearSearch:SetScript("OnLeave", function() GameTooltip:Hide() end)
 clearSearch:Hide()
 
-searchBox:SetScript("OnTextChanged", function()
-    TortoiseGMManager.searchText = this:GetText() or ""
+searchBox:SetScript("OnTextChanged", function(self)
+    TortoiseGMManager.searchText = self:GetText() or ""
     TortoiseGMManager.page = 1
     TortoiseGMManager.RefreshList()
     if TortoiseGMManager.searchText ~= "" then clearSearch:Show() else clearSearch:Hide() end
@@ -197,7 +197,7 @@ tabBaseline:SetPoint("BOTTOMRIGHT", tabStrip, "BOTTOMRIGHT", 0, 0)
 
 TortoiseGMManager.categoryButtons = {}
 local categoryIndex
-for categoryIndex = 1, table.getn(TortoiseGMManager.categories) do
+for categoryIndex = 1, #TortoiseGMManager.categories do
     local category = TortoiseGMManager.categories[categoryIndex]
     local button = Theme.Tab(tabStrip, category.label, CATEGORY_ACCENTS[category.id] or COLORS.gold)
     button.categoryId = category.id; button.categoryLabel = category.label
@@ -210,15 +210,15 @@ for categoryIndex = 1, table.getn(TortoiseGMManager.categories) do
         button.text:SetPoint("CENTER", button, "CENTER", 8, 1)
         button.icon:SetPoint("RIGHT", button.text, "LEFT", -4, 0)
     end
-    button:SetScript("OnClick", function()
-        TortoiseGMManager.currentCategory = this.categoryId
-        TortoiseGMManagerDB.lastCategory = this.categoryId
+    button:SetScript("OnClick", function(self)
+        TortoiseGMManager.currentCategory = self.categoryId
+        TortoiseGMManagerDB.lastCategory = self.categoryId
         TortoiseGMManager.page = 1
         searchBox:SetText("")
         TortoiseGMManager.ClearPendingConfirmation()
         TortoiseGMManager.RefreshCategoryButtons()
         TortoiseGMManager.RefreshList()
-        if this.categoryId == "lookup" and TortoiseGMManager.currentResults and TortoiseGMManager.currentResults[1] then
+        if self.categoryId == "lookup" and TortoiseGMManager.currentResults and TortoiseGMManager.currentResults[1] then
             TortoiseGMManager.SetComposer(TortoiseGMManager.currentResults[1])
         elseif TortoiseGMManager.RefreshLookupState then
             TortoiseGMManager.RefreshLookupState()
@@ -231,7 +231,7 @@ end
 -- row always spans edge to edge without uneven gaps.
 local function layoutTabs()
     local buttons = TortoiseGMManager.categoryButtons
-    local count = table.getn(buttons)
+    local count = #buttons
     if count == 0 then return end
     local natural, widths, i = 0, {}, nil
     for i = 1, count do
@@ -311,7 +311,7 @@ end
 TortoiseGMManager.rows = {}
 local rowIndex
 for rowIndex = 1, ROWS_PER_PAGE do
-    local row = CreateFrame("Frame", nil, main)
+    local row = CreateFrame("Frame", nil, main, BackdropTemplateMixin and "BackdropTemplate" or nil)
     row:SetPoint("TOPLEFT", main, "TOPLEFT", PAD, ROWS_TOP - ((rowIndex - 1) * (ROW_HEIGHT + ROW_GAP)))
     row:SetWidth(CONTENT_WIDTH); row:SetHeight(ROW_HEIGHT)
     Theme.Card(row)
@@ -337,54 +337,54 @@ for rowIndex = 1, ROWS_PER_PAGE do
     row.command:SetWidth(360); row.command:SetHeight(12)
 
     row:EnableMouse(true)
-    row:SetScript("OnEnter", function()
-        setRowHover(this, true)
-        if this.entry then
-            showTooltip(this, "ANCHOR_RIGHT", this.entry.label or this.entry.command or "Command", {
-                { this.entry.detail, 1, 1, 1 },
-                { this.entry.hint and this.entry.hint ~= "" and ("Args: " .. this.entry.hint) or nil, COLORS.gold[1], COLORS.gold[2], COLORS.gold[3] },
-                { this.entry.lookupCommand and ("FIND: " .. this.entry.lookupCommand) or nil, COLORS.blue[1], COLORS.blue[2], COLORS.blue[3] },
-                { this.entry.access and this.entry.access ~= "" and ("Access: " .. this.entry.access) or nil, COLORS.muted[1], COLORS.muted[2], COLORS.muted[3] },
+    row:SetScript("OnEnter", function(self)
+        setRowHover(self, true)
+        if self.entry then
+            showTooltip(self, "ANCHOR_RIGHT", self.entry.label or self.entry.command or "Command", {
+                { self.entry.detail, 1, 1, 1 },
+                { self.entry.hint and self.entry.hint ~= "" and ("Args: " .. self.entry.hint) or nil, COLORS.gold[1], COLORS.gold[2], COLORS.gold[3] },
+                { self.entry.lookupCommand and ("FIND: " .. self.entry.lookupCommand) or nil, COLORS.blue[1], COLORS.blue[2], COLORS.blue[3] },
+                { self.entry.access and self.entry.access ~= "" and ("Access: " .. self.entry.access) or nil, COLORS.muted[1], COLORS.muted[2], COLORS.muted[3] },
             })
         end
     end)
-    row:SetScript("OnLeave", function() setRowHover(this, false); GameTooltip:Hide() end)
+    row:SetScript("OnLeave", function(self) setRowHover(self, false); GameTooltip:Hide() end)
 
     -- Right-hand action cluster: [primary action] [favourite] [help]
     row.helpButton = Theme.IconButton(row, 22, "?")
     row.helpButton:SetPoint("RIGHT", row, "RIGHT", -6, 0)
-    row.helpButton:SetScript("OnClick", function() if this.entry then TortoiseGMManager.RequestHelp(this.entry.command) end end)
-    row.helpButton:SetScript("OnEnter", function()
-        rowChildEnter(this)
-        if this.entry then
-            showTooltip(this, "ANCHOR_RIGHT", "Server syntax help", { { "Sends: .help " .. string.sub(this.entry.command, 2), 1, 1, 1 } })
+    row.helpButton:SetScript("OnClick", function(self) if self.entry then TortoiseGMManager.RequestHelp(self.entry.command) end end)
+    row.helpButton:SetScript("OnEnter", function(self)
+        rowChildEnter(self)
+        if self.entry then
+            showTooltip(self, "ANCHOR_RIGHT", "Server syntax help", { { "Sends: .help " .. string.sub(self.entry.command, 2), 1, 1, 1 } })
         end
     end)
-    row.helpButton:SetScript("OnLeave", function() rowChildLeave(this) end)
+    row.helpButton:SetScript("OnLeave", function(self) rowChildLeave(self) end)
 
     row.favoriteButton = Theme.TextureButton(row, 22, Theme.STAR_TEXTURE, 13)
     row.favoriteButton.icon:SetTexCoord(0, 0.25, 0, 0.25)
     row.favoriteButton:SetPoint("RIGHT", row.helpButton, "LEFT", -2, 0)
-    row.favoriteButton:SetScript("OnClick", function()
-        if not this.entry then return end
-        local added = TortoiseGMManager.ToggleFavourite(this.entry)
+    row.favoriteButton:SetScript("OnClick", function(self)
+        if not self.entry then return end
+        local added = TortoiseGMManager.ToggleFavourite(self.entry)
         TortoiseGMManager.SetStatus(added and "Added to favourites." or "Removed from favourites.", "ok")
         TortoiseGMManager.RefreshList()
     end)
-    row.favoriteButton:SetScript("OnEnter", function()
-        rowChildEnter(this)
-        this.icon:SetAlpha(1)
-        showTooltip(this, "ANCHOR_RIGHT", TortoiseGMManager.IsFavourite(this.entry and this.entry.command) and "Remove from favourites" or "Add to favourites")
+    row.favoriteButton:SetScript("OnEnter", function(self)
+        rowChildEnter(self)
+        self.icon:SetAlpha(1)
+        showTooltip(self, "ANCHOR_RIGHT", TortoiseGMManager.IsFavourite(self.entry and self.entry.command) and "Remove from favourites" or "Add to favourites")
     end)
-    row.favoriteButton:SetScript("OnLeave", function()
-        rowChildLeave(this)
-        if not this.isFavourite then this.icon:SetAlpha(0.35) end
+    row.favoriteButton:SetScript("OnLeave", function(self)
+        rowChildLeave(self)
+        if not self.isFavourite then self.icon:SetAlpha(0.35) end
     end)
 
     row.useButton = Theme.Button(row, "", "secondary", 84, 22)
     row.useButton:SetPoint("RIGHT", row.favoriteButton, "LEFT", -6, 0)
-    row.useButton:SetScript("OnClick", function()
-        local entry = this.entry
+    row.useButton:SetScript("OnClick", function(self)
+        local entry = self.entry
         if not entry then return end
         local interaction = TortoiseGMManager.GetInteraction(entry)
         if getSingleToggle(entry) then
@@ -396,36 +396,36 @@ for rowIndex = 1, ROWS_PER_PAGE do
             if interaction == "review" then TortoiseGMManager.SetStatus("Dangerous action loaded. Press EXECUTE twice to confirm.", "warn") end
         end
     end)
-    row.useButton:SetScript("OnEnter", function()
-        rowChildEnter(this)
-        if this.entry then
+    row.useButton:SetScript("OnEnter", function(self)
+        rowChildEnter(self)
+        if self.entry then
             local title
-            if TortoiseGMManager.IsDangerous(this.entry.command) then title = "Review dangerous command"
-            elseif this.entry.direct then title = "Run now" else title = "Load into command bar" end
-            showTooltip(this, "ANCHOR_RIGHT", title, {
-                { this.entry.detail or "", 1, 1, 1 },
-                { this.entry.hint and this.entry.hint ~= "" and ("Args: " .. this.entry.hint) or nil, COLORS.gold[1], COLORS.gold[2], COLORS.gold[3] },
+            if TortoiseGMManager.IsDangerous(self.entry.command) then title = "Review dangerous command"
+            elseif self.entry.direct then title = "Run now" else title = "Load into command bar" end
+            showTooltip(self, "ANCHOR_RIGHT", title, {
+                { self.entry.detail or "", 1, 1, 1 },
+                { self.entry.hint and self.entry.hint ~= "" and ("Args: " .. self.entry.hint) or nil, COLORS.gold[1], COLORS.gold[2], COLORS.gold[3] },
             })
         end
     end)
-    row.useButton:SetScript("OnLeave", function() rowChildLeave(this) end)
+    row.useButton:SetScript("OnLeave", function(self) rowChildLeave(self) end)
 
     -- Two-state commands render as a joined ON | OFF segmented control.
     row.toggleOffButton = Theme.Button(row, "OFF", "secondary", 42, 22)
     row.toggleOffButton:SetPoint("RIGHT", row.favoriteButton, "LEFT", -6, 0)
-    row.toggleOffButton:SetScript("OnClick", function() if this.entry then executeToggle(this.entry, 2) end end)
-    row.toggleOffButton:SetScript("OnEnter", function()
-        rowChildEnter(this)
-        showTooltip(this, "ANCHOR_RIGHT", "Turn off now", { { "Sends the OFF form immediately.", 1, 1, 1 } })
+    row.toggleOffButton:SetScript("OnClick", function(self) if self.entry then executeToggle(self.entry, 2) end end)
+    row.toggleOffButton:SetScript("OnEnter", function(self)
+        rowChildEnter(self)
+        showTooltip(self, "ANCHOR_RIGHT", "Turn off now", { { "Sends the OFF form immediately.", 1, 1, 1 } })
     end)
-    row.toggleOffButton:SetScript("OnLeave", function() rowChildLeave(this) end)
+    row.toggleOffButton:SetScript("OnLeave", function(self) rowChildLeave(self) end)
     row.toggleOffButton:Hide()
 
     table.insert(TortoiseGMManager.rows, row)
 end
 
-main:SetScript("OnMouseWheel", function()
-    local delta = arg1 or 0
+main:SetScript("OnMouseWheel", function(self, delta)
+    delta = delta or 0
     if delta > 0 and TortoiseGMManager.page > 1 then TortoiseGMManager.page = TortoiseGMManager.page - 1; TortoiseGMManager.RefreshList()
     elseif delta < 0 and TortoiseGMManager.page < TortoiseGMManager.pageCount then TortoiseGMManager.page = TortoiseGMManager.page + 1; TortoiseGMManager.RefreshList() end
 end)
@@ -434,7 +434,7 @@ end)
 -- Composer: header, optional lookup row, arguments, preview + execute
 ---------------------------------------------------------------------------
 
-local composer = CreateFrame("Frame", nil, main)
+local composer = CreateFrame("Frame", nil, main, BackdropTemplateMixin and "BackdropTemplate" or nil)
 composer:SetPoint("TOPLEFT", main, "TOPLEFT", PAD, COMPOSER_TOP)
 composer:SetWidth(CONTENT_WIDTH); composer:SetHeight(COMPOSER_HEIGHT)
 Theme.Card(composer, { 0.066, 0.069, 0.083, 0.98 }, COLORS.border)
@@ -491,11 +491,11 @@ local function refreshComposerHeader()
         if command ~= "" then
             composerTitle:SetText("Manual command")
             Theme.SetTextColor(composerTitle, COLORS.text)
-            composerDetail:SetText("Supplied through /tgmm. Not linked to a catalogue action.")
+            composerDetail:SetText("Supplied through /fgmm. Not linked to a catalogue action.")
         else
             composerTitle:SetText("No action selected")
             Theme.SetTextColor(composerTitle, COLORS.muted)
-            composerDetail:SetText("Pick an action above, or send any command with /tgmm <command>.")
+            composerDetail:SetText("Pick an action above, or send any command with /fgmm <command>.")
         end
         Theme.SetBadge(composerBadge, nil)
         composerAccess:SetText("")
@@ -517,9 +517,9 @@ end
 local lookupButton
 local lookupBox = Theme.Input(composer, "TortoiseGMManagerLookupBox", 344, 24, { search = true, placeholder = "Type a name and press Enter, or an ID" })
 lookupBox:SetPoint("TOPLEFT", composer, "TOPLEFT", 126, -52)
-lookupBox:SetScript("OnEnterPressed", function()
+lookupBox:SetScript("OnEnterPressed", function(self)
     local entry = getLookupEntry()
-    if entry and trim(this:GetText()) ~= "" then TortoiseGMManager.ExecuteLookup(entry, this:GetText()) end
+    if entry and trim(self:GetText()) ~= "" then TortoiseGMManager.ExecuteLookup(entry, self:GetText()) end
 end)
 lookupBox:SetScript("OnTextChanged", function() if TortoiseGMManager.RefreshLookupState then TortoiseGMManager.RefreshLookupState() end end)
 Theme.WatchInput(lookupBox)
@@ -529,13 +529,13 @@ lookupButton = Theme.Button(composer, "SEARCH", "info", 82, 24)
 lookupButton:SetPoint("LEFT", lookupBox, "RIGHT", 8, 0)
 lookupButton:Disable()
 lookupButton:SetScript("OnClick", function() TortoiseGMManager.ExecuteLookup(getLookupEntry(), lookupBox:GetText()) end)
-lookupButton:SetScript("OnEnter", function()
+lookupButton:SetScript("OnEnter", function(self)
     local entry = getLookupEntry()
     if entry then
-        showTooltip(this, "ANCHOR_TOP", entry == TortoiseGMManager.selectedEntry and "Search by name or ID" or "Search items by name or ID", {
+        showTooltip(self, "ANCHOR_TOP", entry == TortoiseGMManager.selectedEntry and "Search by name or ID" or "Search items by name or ID", {
             { "Uses " .. entry.lookupCommand .. " and loads the matching action without running it.", 1, 1, 1 },
         })
-    else showTooltip(this, "ANCHOR_TOP", "Item lookup unavailable") end
+    else showTooltip(self, "ANCHOR_TOP", "Item lookup unavailable") end
 end)
 lookupButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 TortoiseGMManager.lookupButton = lookupButton
@@ -551,7 +551,7 @@ layoutComposer = function()
     if lookupBox:IsShown() then argumentAnchor:SetPoint("TOPLEFT", composer, "TOPLEFT", 10, -84)
     else argumentAnchor:SetPoint("TOPLEFT", composer, "TOPLEFT", 10, -52) end
     local hasArguments, i = false, nil
-    for i = 1, table.getn(TortoiseGMManager.argumentControls or {}) do
+    for i = 1, #(TortoiseGMManager.argumentControls or {}) do
         if TortoiseGMManager.argumentControls[i]:IsShown() then hasArguments = true end
     end
     if hasArguments or lookupBox:IsShown() then composerEmpty:Hide()
@@ -601,7 +601,7 @@ end
 function TortoiseGMManager.RefreshArgumentControls()
     local entry = TortoiseGMManager.selectedEntry
     local arguments = TortoiseGMManager.GetEntryArguments(entry)
-    local argumentCount = table.getn(arguments)
+    local argumentCount = #arguments
     local i
     for i = 1, 4 do
         local control = TortoiseGMManager.argumentControls[i]
@@ -652,39 +652,39 @@ end
 
 for argumentIndex = 1, 4 do
     local control = TortoiseGMManager.argumentControls[argumentIndex]
-    control.edit:SetScript("OnTextChanged", function()
-        local argument = this.argument
-        if argument and TortoiseGMManager.structuredValues then TortoiseGMManager.structuredValues[argument.key] = this:GetText(); TortoiseGMManager.RefreshStructuredPreview() end
+    control.edit:SetScript("OnTextChanged", function(self)
+        local argument = self.argument
+        if argument and TortoiseGMManager.structuredValues then TortoiseGMManager.structuredValues[argument.key] = self:GetText(); TortoiseGMManager.RefreshStructuredPreview() end
     end)
-    control.edit:SetScript("OnEnterPressed", function()
+    control.edit:SetScript("OnEnterPressed", function(self)
         local entry = TortoiseGMManager.selectedEntry
-        if not entry or not this.argument then return end
+        if not entry or not self.argument then return end
         local valid, message = TortoiseGMManager.ValidateValues(entry, TortoiseGMManager.structuredValues)
         if not valid then TortoiseGMManager.SetStatus(message, "error"); return end
         TortoiseGMManager.Execute(commandBox:GetText())
-        this:ClearFocus()
+        self:ClearFocus()
     end)
     Theme.WatchInput(control.edit)
-    control.minus:SetScript("OnClick", function()
-        local argument = this.argument
+    control.minus:SetScript("OnClick", function(self)
+        local argument = self.argument
         if not argument or not TortoiseGMManager.structuredValues then return end
         TortoiseGMManager.structuredValues[argument.key] = TortoiseGMManager.AdjustNumber(argument, TortoiseGMManager.structuredValues[argument.key], -1)
         TortoiseGMManager.RefreshArgumentControls(); TortoiseGMManager.RefreshStructuredPreview()
     end)
-    control.plus:SetScript("OnClick", function()
-        local argument = this.argument
+    control.plus:SetScript("OnClick", function(self)
+        local argument = self.argument
         if not argument or not TortoiseGMManager.structuredValues then return end
         TortoiseGMManager.structuredValues[argument.key] = TortoiseGMManager.AdjustNumber(argument, TortoiseGMManager.structuredValues[argument.key], 1)
         TortoiseGMManager.RefreshArgumentControls(); TortoiseGMManager.RefreshStructuredPreview()
     end)
-    control.toggle:SetScript("OnClick", function()
-        local argument = this.argument
+    control.toggle:SetScript("OnClick", function(self)
+        local argument = self.argument
         if not argument or not TortoiseGMManager.structuredValues then return end
         TortoiseGMManager.structuredValues[argument.key] = TortoiseGMManager.CycleToggle(argument, TortoiseGMManager.structuredValues[argument.key], 1)
         TortoiseGMManager.RefreshArgumentControls(); TortoiseGMManager.RefreshStructuredPreview()
     end)
-    control.toggle:SetScript("OnEnter", function()
-        if this.argument then showTooltip(this, "ANCHOR_TOP", this.argument.label or "Option", { { "Click to cycle the value.", 1, 1, 1 } }) end
+    control.toggle:SetScript("OnEnter", function(self)
+        if self.argument then showTooltip(self, "ANCHOR_TOP", self.argument.label or "Option", { { "Click to cycle the value.", 1, 1, 1 } }) end
     end)
     control.toggle:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
@@ -705,7 +705,7 @@ runButton:SetPoint("BOTTOMRIGHT", composer, "BOTTOMRIGHT", -10, 10)
 local helpButton = Theme.Button(composer, "HELP", "secondary", 56, 28)
 helpButton:SetPoint("RIGHT", runButton, "LEFT", -6, 0)
 helpButton:SetScript("OnClick", function() TortoiseGMManager.RequestHelp(TortoiseGMManager.selectedEntry or commandBox:GetText()) end)
-helpButton:SetScript("OnEnter", function() showTooltip(this, "ANCHOR_TOP", "Server syntax help", { { "Asks the server for .help on the current command.", 1, 1, 1 } }) end)
+helpButton:SetScript("OnEnter", function(self) showTooltip(self, "ANCHOR_TOP", "Server syntax help", { { "Asks the server for .help on the current command.", 1, 1, 1 } }) end)
 helpButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 commandBox = Theme.Input(composer, "TortoiseGMManagerCommandBox", CONTENT_WIDTH - 20 - 104 - 6 - 56 - 6, 28, {
@@ -737,18 +737,18 @@ function TortoiseGMManager.RefreshLookupState()
 end
 
 runButton:SetScript("OnClick", function()
-    if TortoiseGMManager.selectedEntry and table.getn(TortoiseGMManager.GetEntryArguments(TortoiseGMManager.selectedEntry)) > 0 then
+    if TortoiseGMManager.selectedEntry and #TortoiseGMManager.GetEntryArguments(TortoiseGMManager.selectedEntry) > 0 then
         local valid, message = TortoiseGMManager.ValidateValues(TortoiseGMManager.selectedEntry, TortoiseGMManager.structuredValues)
         if not valid then TortoiseGMManager.SetStatus(message, "error"); return end
     end
     TortoiseGMManager.Execute(commandBox:GetText())
 end)
-runButton:SetScript("OnEnter", function()
+runButton:SetScript("OnEnter", function(self)
     local command = TortoiseGMManager.NormalizeCommand(commandBox:GetText() or "")
     if command ~= "" and TortoiseGMManager.IsDangerous(command) then
-        showTooltip(this, "ANCHOR_TOP", "Dangerous command", { { "Press twice within 5 seconds to confirm.", 1, 1, 1 } })
+        showTooltip(self, "ANCHOR_TOP", "Dangerous command", { { "Press twice within 5 seconds to confirm.", 1, 1, 1 } })
     else
-        showTooltip(this, "ANCHOR_TOP", "Execute", { { "Sends the previewed command to the server.", 1, 1, 1 } })
+        showTooltip(self, "ANCHOR_TOP", "Execute", { { "Sends the previewed command to the server.", 1, 1, 1 } })
     end
 end)
 runButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -769,8 +769,8 @@ local function refreshRunButton()
 end
 
 local runElapsed = 0
-composer:SetScript("OnUpdate", function()
-    runElapsed = runElapsed + (arg1 or 0)
+composer:SetScript("OnUpdate", function(self, elapsed)
+    runElapsed = runElapsed + (elapsed or 0)
     if runElapsed < 0.1 then return end
     runElapsed = 0
     refreshRunButton()
@@ -859,7 +859,7 @@ end
 
 function TortoiseGMManager.RefreshCategoryButtons()
     local i
-    for i = 1, table.getn(TortoiseGMManager.categoryButtons) do
+    for i = 1, #TortoiseGMManager.categoryButtons do
         local button = TortoiseGMManager.categoryButtons[i]
         button:SetSelected(button.categoryId == TortoiseGMManager.currentCategory)
     end
@@ -900,14 +900,14 @@ function TortoiseGMManager.RefreshList()
     local query = TortoiseGMManager.searchText or ""
     local results = TortoiseGMManager.GetFilteredCommands(TortoiseGMManager.currentCategory, query)
     TortoiseGMManager.currentResults = results
-    local count = table.getn(results)
+    local count = #results
     local pageCount = math.ceil(count / ROWS_PER_PAGE); if pageCount < 1 then pageCount = 1 end
     TortoiseGMManager.pageCount = pageCount
     if TortoiseGMManager.page > pageCount then TortoiseGMManager.page = pageCount end
     if TortoiseGMManager.page < 1 then TortoiseGMManager.page = 1 end
     local categoryLabel = TortoiseGMManager.currentCategory
     local i
-    for i = 1, table.getn(TortoiseGMManager.categories) do if TortoiseGMManager.categories[i].id == TortoiseGMManager.currentCategory then categoryLabel = TortoiseGMManager.categories[i].label; break end end
+    for i = 1, #TortoiseGMManager.categories do if TortoiseGMManager.categories[i].id == TortoiseGMManager.currentCategory then categoryLabel = TortoiseGMManager.categories[i].label; break end end
     local resultSummary = Theme.Hex(COLORS.text) .. string.upper(categoryLabel) .. "|r   " .. tostring(count) .. (count == 1 and " command" or " commands")
     if query ~= "" then resultSummary = resultSummary .. " matching \"" .. query .. "\"" end
     resultLabel:SetText(resultSummary)
@@ -939,7 +939,7 @@ function TortoiseGMManager.RefreshList()
             local interaction = TortoiseGMManager.GetInteraction(entry)
             local toggle = getSingleToggle(entry)
             row.useButton:ClearAllPoints()
-            if toggle and toggle.options and table.getn(toggle.options) >= 2 then
+            if toggle and toggle.options and #toggle.options >= 2 then
                 row.useButton:SetWidth(42); row.useButton:SetPoint("RIGHT", row.toggleOffButton, "LEFT", 1, 0)
                 row.useButton:SetText(toggle.options[1].label or "ON")
                 row.useButton:SetVariant("secondary"); row.useButton:SetLabelColor(COLORS.green)
@@ -1034,45 +1034,46 @@ local function updateMinimapButtonPosition()
     TortoiseGMManagerDB.minimapX = x; TortoiseGMManagerDB.minimapY = y
 end
 
-minimapButton:SetScript("OnDragStart", function()
+minimapButton:SetScript("OnDragStart", function(self)
     TortoiseGMManager.minimapWasDragged = false
     if not IsShiftKeyDown() then return end
     TortoiseGMManager.minimapDragging = true; TortoiseGMManager.minimapWasDragged = true
-    this:SetScript("OnUpdate", updateMinimapButtonPosition)
+    self:SetScript("OnUpdate", updateMinimapButtonPosition)
 end)
-minimapButton:SetScript("OnDragStop", function()
+minimapButton:SetScript("OnDragStop", function(self)
     if not TortoiseGMManager.minimapDragging then return end
-    TortoiseGMManager.minimapDragging = false; this:SetScript("OnUpdate", nil); updateMinimapButtonPosition()
+    TortoiseGMManager.minimapDragging = false; self:SetScript("OnUpdate", nil); updateMinimapButtonPosition()
 end)
 minimapButton:SetScript("OnClick", function()
     if TortoiseGMManager.minimapWasDragged then TortoiseGMManager.minimapWasDragged = false; return end
     TortoiseGMManager.ToggleUI()
 end)
-minimapButton:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_LEFT"); GameTooltip:SetText("TortoiseGMManager", COLORS.gold[1], COLORS.gold[2], COLORS.gold[3])
+minimapButton:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("ForeverGMManager", COLORS.gold[1], COLORS.gold[2], COLORS.gold[3])
     GameTooltip:AddLine("Click: open / close", 1, 1, 1); GameTooltip:AddLine("Shift-drag: move around minimap", 0.75, 0.75, 0.75); GameTooltip:Show()
 end)
 minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-SLASH_TORTOISEGMMANAGER1 = "/tgmm"
+SLASH_TORTOISEGMMANAGER1 = "/fgmm"
+SLASH_TORTOISEGMMANAGER2 = "/tgmm"
 SlashCmdList["TORTOISEGMMANAGER"] = function(msg)
     msg = trim(msg); TortoiseGMManager.ShowUI()
     if msg ~= "" then
         TortoiseGMManager.selectedEntry = nil; TortoiseGMManager.structuredValues = nil
         TortoiseGMManager.RefreshArgumentControls(); lookupButton:Disable(); commandBox:SetText(TortoiseGMManager.NormalizeCommand(msg))
-        hintText:SetText("Command supplied through /tgmm. Review the read-only preview, then press EXECUTE.")
+        hintText:SetText("Command supplied through /fgmm. Review the read-only preview, then press EXECUTE.")
         refreshComposerHeader()
     end
 end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("VARIABLES_LOADED"); eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD"); eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-eventFrame:SetScript("OnEvent", function()
+eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "VARIABLES_LOADED" then
         TortoiseGMManager.InitializeDB()
         TortoiseGMManager.currentCategory = TortoiseGMManager.GetDefaultCategory()
         TortoiseGMManagerDB.lastCategory = TortoiseGMManager.currentCategory
         restoreSavedPositions()
-        TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /tgmm.")
+        TortoiseGMManager.RefreshCategoryButtons(); TortoiseGMManager.RefreshList(); TortoiseGMManager.Print("Loaded. Click the minimap hammer or use /fgmm.")
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TARGET_CHANGED" then TortoiseGMManager.RefreshTarget() end
 end)

@@ -39,20 +39,20 @@ local function getItemReference(result)
     return "item:" .. tostring(result.id) .. ":0:0:0:0:0:0:0"
 end
 local function usableTexture(texture)
-    return type(texture) == "string" and texture ~= ""
+    return (type(texture) == "string" and texture ~= "") or (type(texture) == "number" and texture > 0)
 end
 local function getItemTexture(value)
-    if not value or not GetItemInfo then return nil end
-    -- Tortoise WoW's 1.12 client returns the texture path in slot 9;
-    -- slot 10 is a numeric field and paints Texture widgets solid red.
-    local name, link, quality, minimum, itemType, subType, stack, equip, texture = GetItemInfo(value)
+    local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if not value or not getInfo then return nil end
+    local _, _, _, _, _, _, _, _, _, texture = getInfo(value)
     if usableTexture(texture) then return texture end
     return nil
 end
 local function getActualItemIcon(result)
     if not result or result.kind ~= "item" then return nil end
     local texture
-    if GetItemIcon then texture = GetItemIcon(tonumber(result.id) or result.id) end
+    local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+    if getIcon then texture = getIcon(tonumber(result.id) or result.id) end
     if usableTexture(texture) then return texture end
     texture = getItemTexture(result.link)
     if not texture then texture = getItemTexture(getItemReference(result)) end
@@ -94,10 +94,10 @@ end
 -- Window
 ---------------------------------------------------------------------------
 
-local frame = CreateFrame("Frame", "TortoiseGMManagerLookupResultsFrame", UIParent)
+local frame = CreateFrame("Frame", "TortoiseGMManagerLookupResultsFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 frame:SetWidth(RESULT_WIDTH); frame:SetHeight(RESULT_HEIGHT); frame:SetFrameStrata("DIALOG"); frame:SetMovable(true)
 frame:EnableMouse(true); frame:EnableMouseWheel(true); frame:RegisterForDrag("LeftButton")
-frame:SetScript("OnDragStart", function() this:StartMoving() end); frame:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
+frame:SetScript("OnDragStart", function(self) self:StartMoving() end); frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 Theme.Window(frame, { title = "Lookup Results", subtitle = "Server lookup · pick a result to act on it", icon = "Interface\\Icons\\INV_Misc_Spyglass_03", headerHeight = HEADER_HEIGHT })
 frame:Hide(); TortoiseGMManager.lookupResultsFrame = frame
 if TortoiseGMManager.frame then frame:SetPoint("TOPLEFT", TortoiseGMManager.frame, "TOPRIGHT", 10, 0) else frame:SetPoint("CENTER", UIParent, "CENTER", 280, 0) end
@@ -106,7 +106,7 @@ if UISpecialFrames then table.insert(UISpecialFrames, "TortoiseGMManagerLookupRe
 frame.closeButton:SetScript("OnClick", function() TortoiseGMManager.DismissLookupResults(); frame:Hide() end)
 
 -- Context chip: which lookup produced these results and where they go.
-local contextBox = CreateFrame("Frame", nil, frame)
+local contextBox = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
 contextBox:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, CONTEXT_TOP)
 contextBox:SetWidth(CONTENT_WIDTH); contextBox:SetHeight(24)
 Theme.Backdrop(contextBox, COLORS.inset, COLORS.border)
@@ -151,35 +151,35 @@ end
 TortoiseGMManager.lookupResultRows = {}
 local rowIndex
 for rowIndex = 1, RESULTS_PER_PAGE do
-    local row = CreateFrame("Button", nil, frame); row:SetWidth(CONTENT_WIDTH); row:SetHeight(ROW_HEIGHT)
+    local row = CreateFrame("Button", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil); row:SetWidth(CONTENT_WIDTH); row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, ROWS_TOP - ((rowIndex - 1) * (ROW_HEIGHT + ROW_GAP)))
     Theme.Card(row)
     row.icon = Theme.Icon(row, 24); row.icon:SetPoint("LEFT", row, "LEFT", 7, 0)
     row.name = Theme.Text(row, 12, COLORS.text); row.name:SetPoint("TOPLEFT", row, "TOPLEFT", 40, -5); row.name:SetWidth(330); row.name:SetHeight(14)
     row.meta = Theme.Text(row, 9, COLORS.muted); row.meta:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1); row.meta:SetWidth(330); row.meta:SetHeight(11)
     row.use = Theme.Text(row, 13, COLORS.faint, { justify = "RIGHT" }); row.use:SetPoint("RIGHT", row, "RIGHT", -11, 0); row.use:SetText(">")
-    row:SetScript("OnClick", function()
-        if not this.result then return end
-        TortoiseGMManager.selectedLookupResult = this.result
+    row:SetScript("OnClick", function(self)
+        if not self.result then return end
+        TortoiseGMManager.selectedLookupResult = self.result
         TortoiseGMManager.lookupActionValues = copy(TortoiseGMManager.structuredValues)
         TortoiseGMManager.ClearPendingConfirmation(); TortoiseGMManager.RefreshLookupResults(true)
     end)
-    row:SetScript("OnEnter", function()
-        this.hovered = true; paintRow(this)
-        if not this.result then return end
-        GameTooltip:SetOwner(this, "ANCHOR_LEFT")
-        local reference = getItemReference(this.result)
+    row:SetScript("OnEnter", function(self)
+        self.hovered = true; paintRow(self)
+        if not self.result then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        local reference = getItemReference(self.result)
         if reference then
             GameTooltip:SetHyperlink(reference)
-            this.icon:SetTexture(getResultIcon(this.result))
-            GameTooltip:AddLine("Item ID: " .. tostring(this.result.id), 0.62, 0.60, 0.56)
+            self.icon:SetTexture(getResultIcon(self.result))
+            GameTooltip:AddLine("Item ID: " .. tostring(self.result.id), 0.62, 0.60, 0.56)
         else
-            GameTooltip:SetText(this.result.name or tostring(this.result.id))
-            GameTooltip:AddLine("ID: " .. tostring(this.result.id) .. "  Type: " .. tostring(this.result.kind), 1, 1, 1)
+            GameTooltip:SetText(self.result.name or tostring(self.result.id))
+            GameTooltip:AddLine("ID: " .. tostring(self.result.id) .. "  Type: " .. tostring(self.result.kind), 1, 1, 1)
         end
         GameTooltip:Show()
     end)
-    row:SetScript("OnLeave", function() this.hovered = false; paintRow(this); GameTooltip:Hide() end)
+    row:SetScript("OnLeave", function(self) self.hovered = false; paintRow(self); GameTooltip:Hide() end)
     table.insert(TortoiseGMManager.lookupResultRows, row)
 end
 
@@ -221,7 +221,7 @@ for rowIndex = 1, 3 do
     control.plus = Theme.Button(frame, "+", "secondary", 23, 24, 13)
     control.plus:SetPoint("LEFT", control.edit, "RIGHT", -1, 0)
     control.edit:SetScript("OnTextChanged", function() changed(control) end)
-    control.edit:SetScript("OnEnterPressed", function() this:ClearFocus(); TortoiseGMManager.ActivateLookupAction() end)
+    control.edit:SetScript("OnEnterPressed", function(self) self:ClearFocus(); TortoiseGMManager.ActivateLookupAction() end)
     control.minus:SetScript("OnClick", function()
         local a = control.argument; if not a then return end
         local value = a.type == "toggle" and TortoiseGMManager.CycleToggle(a, control.edit:GetText(), -1) or TortoiseGMManager.AdjustNumber(a, control.edit:GetText(), -1)
@@ -339,7 +339,7 @@ end
 
 TortoiseGMManager.lookupResultsPage = 1
 function TortoiseGMManager.RefreshLookupResults(focusFirst)
-    local results = TortoiseGMManager.GetLookupResults(); local count = table.getn(results); local pages = math.ceil(count / RESULTS_PER_PAGE); if pages < 1 then pages = 1 end
+    local results = TortoiseGMManager.GetLookupResults(); local count = #results; local pages = math.ceil(count / RESULTS_PER_PAGE); if pages < 1 then pages = 1 end
     if TortoiseGMManager.lookupResultsPage > pages then TortoiseGMManager.lookupResultsPage = pages end; if TortoiseGMManager.lookupResultsPage < 1 then TortoiseGMManager.lookupResultsPage = 1 end
     local session = TortoiseGMManager.pendingLookup or TortoiseGMManager.lastLookupSession; if not session and count > 0 then session = results[1].context end
     if session then
@@ -367,12 +367,12 @@ function TortoiseGMManager.RefreshLookupResults(focusFirst)
     renderAction(focusFirst)
 end
 prevButton:SetScript("OnClick", function() if TortoiseGMManager.lookupResultsPage > 1 then TortoiseGMManager.lookupResultsPage = TortoiseGMManager.lookupResultsPage - 1; TortoiseGMManager.RefreshLookupResults(false) end end)
-nextButton:SetScript("OnClick", function() local pages = math.ceil(table.getn(TortoiseGMManager.GetLookupResults()) / RESULTS_PER_PAGE); if TortoiseGMManager.lookupResultsPage < pages then TortoiseGMManager.lookupResultsPage = TortoiseGMManager.lookupResultsPage + 1; TortoiseGMManager.RefreshLookupResults(false) end end)
-frame:SetScript("OnMouseWheel", function() if (arg1 or 0) > 0 then prevButton:GetScript("OnClick")() else nextButton:GetScript("OnClick")() end end)
+nextButton:SetScript("OnClick", function() local pages = math.ceil(#TortoiseGMManager.GetLookupResults() / RESULTS_PER_PAGE); if TortoiseGMManager.lookupResultsPage < pages then TortoiseGMManager.lookupResultsPage = TortoiseGMManager.lookupResultsPage + 1; TortoiseGMManager.RefreshLookupResults(false) end end)
+frame:SetScript("OnMouseWheel", function(self, delta) if (delta or 0) > 0 then prevButton:GetScript("OnClick")(prevButton) else nextButton:GetScript("OnClick")(nextButton) end end)
 
 local iconRetryElapsed, labelElapsed = 0, 0
-frame:SetScript("OnUpdate", function()
-    local elapsed = arg1 or 0
+frame:SetScript("OnUpdate", function(self, elapsed)
+    elapsed = elapsed or 0
     -- Keep the CONFIRM label honest once the 5 second window expires.
     labelElapsed = labelElapsed + elapsed
     if labelElapsed >= 0.2 then labelElapsed = 0; paintActionLabel() end
@@ -380,7 +380,7 @@ frame:SetScript("OnUpdate", function()
     if iconRetryElapsed < 0.5 then return end
     iconRetryElapsed = 0
     local i
-    for i = 1, table.getn(TortoiseGMManager.lookupResultRows) do
+    for i = 1, #TortoiseGMManager.lookupResultRows do
         local row = TortoiseGMManager.lookupResultRows[i]
         local texture = getActualItemIcon(row.result)
         if texture then row.icon:SetTexture(texture) end
