@@ -310,6 +310,41 @@ expectEqual(refreshCount, refreshBeforeIgnore, "ignored messages do not trigger 
 TortoiseGM.RefreshList = savedRefreshList
 UnitName = nil
 
+-- Minimap visibility persistence and toggling
+expectEqual(TortoiseGMDB.minimapHidden, false, "minimapHidden defaults to false")
+expectEqual(TortoiseGM.IsMinimapHidden(), false, "IsMinimapHidden starts false")
+local minimapRefreshes = 0
+local savedRefreshMinimap = TortoiseGM.RefreshMinimapButton
+TortoiseGM.RefreshMinimapButton = function() minimapRefreshes = minimapRefreshes + 1 end
+expectEqual(TortoiseGM.ToggleMinimapButton(), true, "ToggleMinimapButton hides minimap button")
+expectEqual(TortoiseGMDB.minimapHidden, true, "minimapHidden persists as true")
+expectEqual(minimapRefreshes, 1, "RefreshMinimapButton called on toggle")
+expectEqual(TortoiseGM.ToggleMinimapButton(), false, "ToggleMinimapButton shows minimap button again")
+expectEqual(TortoiseGM.SetMinimapHidden(true), true, "SetMinimapHidden sets hidden true")
+expectEqual(TortoiseGM.IsMinimapHidden(), true, "IsMinimapHidden reflects true")
+TortoiseGM.RefreshMinimapButton = savedRefreshMinimap
+
+-- New ForeverAdmin-ported commands: composition, danger flags, and lookup support
+local gobjectMoveEntry = TortoiseGM.FindEntry("gobject-move")
+expectTrue(gobjectMoveEntry ~= nil, "gobject-move entry exists")
+expectTrue(gobjectMoveEntry.danger == true, "gobject-move is marked dangerous")
+expectTrue(TortoiseGM.IsDangerous(".gobject move 123"), "IsDangerous flags .gobject move")
+expectEqual(TortoiseGM.ComposeValues(gobjectMoveEntry, { spawnId = 42 }), ".gobject move 42", "gobject-move composes spawnId")
+
+local npcMovetypeEntry = TortoiseGM.FindEntry("npc-set-movetype")
+expectTrue(npcMovetypeEntry ~= nil, "npc-set-movetype entry exists")
+expectTrue(npcMovetypeEntry.danger == true, "npc-set-movetype is marked dangerous")
+expectEqual(TortoiseGM.ComposeValues(npcMovetypeEntry, { movetype = "random" }), ".npc set movetype random", "npc-set-movetype composes toggle option")
+
+local reloadTableEntry = TortoiseGM.FindEntry("reload-table")
+expectTrue(reloadTableEntry ~= nil, "reload-table entry exists")
+expectTrue(reloadTableEntry.danger == true, "reload-table is marked dangerous")
+expectEqual(TortoiseGM.ComposeValues(reloadTableEntry, { table = "smart_scripts" }), ".reload smart_scripts", "reload-table composes table name")
+
+local loglevelEntry = TortoiseGM.FindEntry("server-set-loglevel")
+expectTrue(loglevelEntry ~= nil, "server-set-loglevel entry exists")
+expectEqual(TortoiseGM.ComposeValues(loglevelEntry, { type = "l", name = "network", level = 2 }), ".server set loglevel l network 2", "server-set-loglevel composes all args")
+
 if failures > 0 then
     error(tostring(failures) .. " of " .. tostring(checks) .. " checks failed")
 end
