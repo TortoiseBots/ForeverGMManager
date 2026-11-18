@@ -158,6 +158,15 @@ for rowIndex = 1, RESULTS_PER_PAGE do
     row.name = Theme.Text(row, 12, COLORS.text); row.name:SetPoint("TOPLEFT", row, "TOPLEFT", 40, -5); row.name:SetWidth(330); row.name:SetHeight(14)
     row.meta = Theme.Text(row, 9, COLORS.muted); row.meta:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1); row.meta:SetWidth(330); row.meta:SetHeight(11)
     row.use = Theme.Text(row, 13, COLORS.faint, { justify = "RIGHT" }); row.use:SetPoint("RIGHT", row, "RIGHT", -11, 0); row.use:SetText(">")
+    row.addMailButton = Theme.Button(row, "Add to mail", "secondary", 76, 20, 9)
+    row.addMailButton:SetPoint("RIGHT", row.use, "LEFT", -8, 0)
+    row.addMailButton:SetScript("OnClick", function(self)
+        local r = self:GetParent().result
+        if r and r.kind == "item" and TortoiseGMManager.OpenMailWithItem then
+            TortoiseGMManager.OpenMailWithItem(r.id, r.name, 1)
+        end
+    end)
+    row.addMailButton:Hide()
     row:SetScript("OnClick", function(self)
         if not self.result then return end
         TortoiseGMManager.selectedLookupResult = self.result
@@ -356,6 +365,11 @@ function TortoiseGMManager.RefreshLookupResults(focusFirst)
             local rarity = paintResultIdentity(row.name, row.icon, result)
             if rarity then row.meta:SetText(rarity[1] .. " ITEM   #" .. tostring(result.id))
             else row.meta:SetText(string.upper(result.kind or "result") .. "   #" .. tostring(result.id)) end
+            if result.kind == "item" then
+                row.name:SetWidth(250); row.meta:SetWidth(250); row.addMailButton:Show()
+            else
+                row.name:SetWidth(330); row.meta:SetWidth(330); row.addMailButton:Hide()
+            end
             row.selected = result == TortoiseGMManager.selectedLookupResult; paintRow(row); row:Show()
         else row.result = nil; row.selected = false; row:Hide() end
     end
