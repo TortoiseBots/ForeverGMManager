@@ -25,6 +25,7 @@ C_ChatInfo = {
 DEFAULT_CHAT_FRAME = nil
 
 dofile("Data.lua")
+dofile("Teleports.lua")
 dofile("Core.lua")
 
 -- Keep the behavioral assertions readable while exercising the renamed addon.
@@ -309,6 +310,38 @@ expectEqual(refreshCount, refreshBeforeIgnore, "ignored messages do not trigger 
 
 TortoiseGM.RefreshList = savedRefreshList
 UnitName = nil
+
+-- Ported teleports are direct travel actions searchable by zone and point name.
+local stockadeEntry = TortoiseGM.FindEntry("go-xyz-the-stockade")
+expectTrue(stockadeEntry ~= nil, "ported teleport entry is loaded")
+expectEqual(stockadeEntry.category, "travel", "ported teleport is in travel category")
+expectEqual(stockadeEntry.direct, true, "ported teleport is direct")
+expectEqual(stockadeEntry.access, "Moderator", "ported teleport uses Moderator access")
+expectEqual(stockadeEntry.label, "Stormwind: The Stockade (Dungeon Entrance) (General)", "ported teleport label is Zone: Point")
+expectEqual(stockadeEntry.command, ".go xyz -8779.9 834.35 94.68 0", "ported teleport builds .go xyz x y z map")
+
+local thanesEntry = TortoiseGM.FindEntry("go-xyz-hall-of-thanes-entrance")
+expectTrue(thanesEntry ~= nil, "teleport with orientation is loaded")
+expectEqual(thanesEntry.command, ".go xyz -4820.631836 -936.790649 399.042877 0 1.951188", "ported teleport appends orientation when present")
+
+expectEqual(TortoiseGM.FindEntry("go-xyz-stormwind"), nil, "existing .tele Stormwind shortcut is not duplicated")
+expectEqual(TortoiseGM.FindEntry("go-xyz-zephris"), nil, "existing .tele Zephras shortcut is not duplicated")
+expectEqual(TortoiseGM.FindEntry("go-xyz-naxxramas-instance"), nil, "existing .tele Naxx shortcut is not duplicated")
+
+local zoneMatches = TortoiseGM.GetFilteredCommands("travel", "duskwood")
+local foundDarkshire = false
+local matchIndex
+for matchIndex = 1, #zoneMatches do
+    if zoneMatches[matchIndex].id == "go-xyz-darkshire" then foundDarkshire = true end
+end
+expectTrue(foundDarkshire, "catalogue search finds ported teleports by zone name")
+
+local pointMatches = TortoiseGM.GetFilteredCommands("travel", "darkshire")
+local foundPoint = false
+for matchIndex = 1, #pointMatches do
+    if pointMatches[matchIndex].id == "go-xyz-darkshire" then foundPoint = true end
+end
+expectTrue(foundPoint, "catalogue search finds ported teleports by point name")
 
 if failures > 0 then
     error(tostring(failures) .. " of " .. tostring(checks) .. " checks failed")

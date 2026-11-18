@@ -2,6 +2,8 @@
 
 ForeverGMManager is a port of TortoiseGMManager to the WoW Forever client and its TrinityCore-based server. The port is distributed under the GNU Affero General Public License v3.0 (see LICENSE).
 
+Teleport coordinates in `Teleports.lua` are ported from ForeverAdmin (GPL-3, derived from AzerothAdmin by SuperStyro and Manground).
+
 Code taken from TortoiseGMManager was published under the MIT License:
 
 ```
