@@ -181,7 +181,7 @@ Run `python3 tools/gen_commands.py` whenever `Data.lua` changes; `tests/verify_s
 
 ## Project scope and affiliation
 
-This repository contains client-addon source code, project artwork, and documentation. It does not distribute game-client binaries or extracted game data, provide hosting, or operate a game service. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft and related marks belong to their respective owners.
+This repository contains client-addon source code, project artwork, and documentation. It does not distribute game-client binaries or extracted game data, provide hosting, or operate a game service. It is an unofficial community project made for educational purposes. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft and related marks belong to their respective owners.
 
 ## Licence
 
