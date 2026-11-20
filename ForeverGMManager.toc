@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: ForeverGMManager
-## Notes: Compact GM command manager with searchable server-backed lookups for WoW Forever.
+## Notes: Compact GM command manager with searchable server-backed lookups for ForeverCore servers.
 ## Author: Sagiroth
 ## Version: 0.7.8
 ## IconTexture: Interface\AddOns\ForeverGMManager\assets\icon

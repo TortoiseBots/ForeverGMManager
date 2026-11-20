@@ -2,11 +2,11 @@
 
 # ForeverGMManager
 
-A compact GM command manager for **WoW Forever** (client **1.60.1**, interface **16001**).
+A compact GM command manager for **WoW Forever** on **ForeverCore**.
 
-**Status:** Ported to WoW Forever. The window, icon, colours and minimap button are checked in the game client; the full command panel has not had a complete in-game pass yet.
+**Status:** Ported to the WoW Forever client. The window, icon, colours and minimap button are checked in the game client; the full command panel has not had a complete in-game pass yet.
 
-ForeverGMManager turns TrinityCore's dot-prefixed GM commands into a small searchable in-game interface. It is built for WoW Forever server administration and testing: teleporting, player and NPC management, items and spells, quests, gameobjects, lookups, moderation, and server utilities.
+ForeverGMManager turns TrinityCore's dot-prefixed GM commands into a small searchable in-game interface. It is built for ForeverCore server administration and testing: teleporting, player and NPC management, items and spells, quests, gameobjects, lookups, moderation, and server utilities.
 
 The addon is **client-side only**. It does not connect to the database and does not bypass server permissions. Commands run through the normal GM chat-command path, and the server's RBAC permissions remain authoritative (a GM account is required).
 
@@ -89,7 +89,7 @@ Commands not present in the server registry are not advertised.
 ```
 
 3. Start or restart the WoW Forever client.
-4. On the character-selection screen, open **AddOns** and enable **ForeverGMManager** (enable **Load out of date AddOns** if prompted; the manifest targets interface `16001`).
+4. On the character-selection screen, open **AddOns** and enable **ForeverGMManager** (enable **Load out of date AddOns** if prompted).
 5. Log into a GM character.
 6. Click the hammer icon next to the minimap, or run `/fgmm` (alias `/tgmm`).
 
@@ -181,7 +181,7 @@ Run `python3 tools/gen_commands.py` whenever `Data.lua` changes; `tests/verify_s
 
 ## Project scope and affiliation
 
-This repository contains client-addon source code, project artwork, and documentation. It does not distribute game-client binaries or extracted game data, provide hosting, or operate a game service. It is an unofficial community project made for educational purposes. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft and related marks belong to their respective owners.
+This repository contains client-addon source code, project artwork, and documentation. It does not distribute game-client binaries or extracted game data, provide hosting, or operate a game service. It is an unofficial community project made for educational purposes. It is not affiliated with or endorsed by Blizzard Entertainment or the WoW Forever project. World of Warcraft and related marks belong to their respective owners.
 
 ## Licence
 
