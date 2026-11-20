@@ -88,7 +88,7 @@
 | Set honor | `.modify honor` | Moderator | Add honor points to the selected player or self. |  |
 | Drunk level | `.modify drunk` | Moderator | Set drunkenness level (0..100, 0 = sober) on selected player or self. |  |
 | Set phase | `.modify phase` | Administrator | Set phase ID on the selected unit or self. |  |
-| Talent points | `.modify talentpoints` | Moderator | Set unspent talent points (disabled in Classic 1.60; use Rate.Talent in config). |  |
+| Talent points | `.modify talentpoints` | Moderator | Set unspent talent points (disabled on ForeverCore; use Rate.Talent in config). |  |
 | Set reputation | `.modify reputation` | GM | Set reputation with a faction on the selected player. Use FIND to resolve a faction name. |  |
 | Add item | `.additem` | Administrator | Add item(s) to selected player or self. Use FIND to search items by name. |  |
 | Add item set | `.additem set` | Administrator | Add every item in an item set to selected player or self. Use FIND to resolve a set name. |  |
