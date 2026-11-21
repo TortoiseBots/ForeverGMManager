@@ -10,6 +10,35 @@ ForeverGMManager turns TrinityCore's dot-prefixed GM commands into a small searc
 
 The addon is **client-side only**. It does not connect to the database and does not bypass server permissions. Commands run through the normal GM chat-command path, and the server's RBAC permissions remain authoritative (a GM account is required).
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/search-configure.webp" alt="Command search and configure" width="440"><br>
+  <sub><b>Search</b>: filter the command list as you type and fill in the selected command.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/favourites.webp" alt="Favourites" width="440"><br>
+  <sub><b>Favourites</b>: starred commands, one-click RUN NOW and ON/OFF switches.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/item-lookup.webp" alt="Item lookup results" width="760"><br>
+  <sub><b>Item lookup</b>: search by part of a name and act on the result.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mail.webp" alt="Mail composer" width="760"><br>
+  <sub><b>Mail</b>: send items or gold to a player.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/danger-armed.webp" alt="Dangerous command armed" width="440"><br>
+  <sub><b>Danger</b>: a risky command needs a second EXECUTE within five seconds.</sub>
+</p>
+
+<sub>Rendered offline from the addon's own layout code (<code>tools/preview</code>), not taken in the game client.</sub>
+
 ## Features
 
 - Compact structured command palette.
@@ -160,6 +189,7 @@ COMMANDS.md     generated command reference (from Data.lua)
 
 tools/
   gen_commands.py       generates COMMANDS.md from Data.lua
+  preview/              offline renderer for the README screenshots
 
 tests/
   core_spec.lua
@@ -178,6 +208,8 @@ python3 tools/gen_commands.py
 ```
 
 Run `python3 tools/gen_commands.py` whenever `Data.lua` changes; `tests/verify_server_catalog.py` fails if `COMMANDS.md` is out of date.
+
+To redraw the README screenshots after a UI change, run `sh tools/preview/run.sh <out dir> <asset dir>` (needs Node with Playwright, Python with Pillow, and the client fonts `FRIZQT__.ttf` and `ARIALN.ttf` in `<asset dir>/fonts`; fonts are not in the repo), then convert the PNGs to `docs/screenshots/*.webp`.
 
 ## Project scope and affiliation
 
