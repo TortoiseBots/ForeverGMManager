@@ -286,13 +286,17 @@ copperEdit:SetScript("OnTextChanged", onFieldChanged)
 itemsModeBtn:SetScript("OnClick", function() mailMode = "items"; onFieldChanged() end)
 moneyModeBtn:SetScript("OnClick", function() mailMode = "money"; onFieldChanged() end)
 
+-- The recipient field is compared and sent later, so a "secret" target name
+-- (the client hides some names from addons) is never put into it.
+local function plainTargetName()
+    local name = UnitName and UnitName("target")
+    if not name or (issecretvalue and issecretvalue(name)) or name == "" then return nil end
+    return name
+end
+
 targetBtn:SetScript("OnClick", function()
-    if UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
-        local name = UnitName("target")
-        if name and name ~= "" then recipientEdit:SetText(name) end
-    elseif UnitName and UnitName("target") then
-        recipientEdit:SetText(UnitName("target"))
-    end
+    local name = plainTargetName()
+    if name then recipientEdit:SetText(name) end
 end)
 
 local function addItemFromInputs()
@@ -349,8 +353,8 @@ end
 function TortoiseGMManager.ShowMailComposer(mode)
     if mode == "items" or mode == "money" then mailMode = mode end
     if recipientEdit:GetText() == "" and UnitExists and UnitExists("target") and UnitIsPlayer and UnitIsPlayer("target") then
-        local name = UnitName("target")
-        if name and name ~= "" then recipientEdit:SetText(name) end
+        local name = plainTargetName()
+        if name then recipientEdit:SetText(name) end
     end
     TortoiseGMManager.RefreshMailComposer()
     frame:Show()
