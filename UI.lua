@@ -868,16 +868,22 @@ function TortoiseGMManager.RefreshCategoryButtons()
     end
 end
 
+-- The client may hand an addon a creature's name as a "secret" string: it can be
+-- shown, but comparing or measuring it raises an error.
+local function isSecret(value)
+    return issecretvalue and issecretvalue(value) or false
+end
+
 function TortoiseGMManager.RefreshTarget()
     local name = UnitName("target")
-    if name and name ~= "" then
+    if name and (isSecret(name) or name ~= "") then
         targetText:SetText("Target: " .. name); Theme.SetTextColor(targetText, COLORS.text); Theme.SetDotColor(targetDot, COLORS.green)
     else
         targetText:SetText("Target: none"); Theme.SetTextColor(targetText, COLORS.muted); Theme.SetDotColor(targetDot, COLORS.faint)
     end
     targetText:SetWidth(160)
     local textWidth = targetText:GetStringWidth() or 0
-    if textWidth < 20 or textWidth > 160 then textWidth = 160 end
+    if isSecret(textWidth) or textWidth < 20 or textWidth > 160 then textWidth = 160 end
     targetText:SetWidth(textWidth + 2); targetText:SetHeight(12)
     targetPill:SetWidth(textWidth + 32)
 end
