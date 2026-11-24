@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        type: choice
+        description: 'Release increment type'
+        options:
+          - 'patch (bug fixes, tidy up, small tweaks: 0.0.X)'
+          - 'minor (new commands, new panels: 0.X.0)'
+          - 'major (breaking changes: X.0.0)'
+          - 'custom (specify custom version below)'
+        default: 'patch (bug fixes, tidy up, small tweaks: 0.0.X)'
+      custom_version:
+        description: 'Custom version (used if custom selected, e.g. 1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.actor == 'Sagiroth' || github.actor == 'sagiroth'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # verify_server_catalog.py needs a local ForeverCore checkout, so it is not run here.
+      - name: Run Lua tests
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y lua5.1
+          lua5.1 tests/core_spec.lua
+          lua5.1 tests/lookup_spec.lua
+
+      - name: Compute version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          CUSTOM_VER: ${{ inputs.custom_version }}
+        run: |
+          python3 - << 'EOF'
+          import os, re
+
+          toc = "ForeverGMManager.toc"
+          text = open(toc, encoding="utf-8").read()
+          current = re.search(r"(?m)^## Version:\s*(\d+)\.(\d+)\.(\d+)\s*$", text)
+          if not current:
+              raise SystemExit(f"no X.Y.Z '## Version:' line in {toc}")
+          maj, min_, pat = map(int, current.groups())
+
+          bump = os.environ["BUMP"]
+          custom = os.environ.get("CUSTOM_VER", "").strip().lstrip("v")
+          if bump.startswith("custom"):
+              if not re.fullmatch(r"\d+\.\d+\.\d+", custom):
+                  raise SystemExit(f"custom version must be X.Y.Z, got '{custom}'")
+              target = custom
+          elif bump.startswith("major"):
+              target = f"{maj + 1}.0.0"
+          elif bump.startswith("minor"):
+              target = f"{maj}.{min_ + 1}.0"
+          else:
+              target = f"{maj}.{min_}.{pat + 1}"
+
+          print(f"Release version: {target} (was {maj}.{min_}.{pat})")
+          text = re.sub(r"(?m)^## Version:.*$", f"## Version: {target}", text)
+          open(toc, "w", encoding="utf-8").write(text)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"tag=v{target}\n")
+          EOF
+
+      - name: Commit version and tag
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists" >&2; exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ForeverGMManager.toc
+          git commit -m "release $TAG [skip ci]" || echo "Nothing to commit"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Package addon zip
+        run: |
+          git archive --format=zip --prefix=ForeverGMManager/ -o /tmp/ForeverGMManager.zip HEAD -- . \
+            ':!tests' ':!tools' ':!docs' ':!.github' ':!.gitignore'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release create "$TAG" /tmp/ForeverGMManager.zip \
+            --repo "${{ github.repository }}" \
+            --title "ForeverGMManager $TAG" \
+            --generate-notes \
+            --latest
