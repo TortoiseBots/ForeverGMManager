@@ -2,7 +2,7 @@
 ## Title: ForeverGMManager
 ## Notes: Compact GM command manager with searchable server-backed lookups for ForeverCore servers.
 ## Author: Sagiroth
-## Version: 0.7.8
+## Version: 1.0.0
 ## IconTexture: Interface\AddOns\ForeverGMManager\assets\icon
 ## SavedVariables: TortoiseGMManagerDB
 
